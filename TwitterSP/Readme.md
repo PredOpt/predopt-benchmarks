@@ -6,3 +6,6 @@
 * We only use the structure of the graph. But this data has no edge weights. So the edge weights are generated synthetically.
 
 * We use the same network for all the instances. But each instance has different different start and end node. So, in the equality constraint of the form `Ax=b`, the `b` vector is different for separate instances.
+
+* We have in total 12300 instances.
+* We solve the problem using Gurobi.
