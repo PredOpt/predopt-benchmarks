@@ -1,24 +1,7 @@
-Data generation of shortest path instances as it is done in the article
- Smart “predict, then optimize” (2021). The methodology is as follows:
-     
-     1. Real model parameters are simulated as a bernoulli(probability = 0.5)
-     
-     2. Real cost per edge are simulated with the formula 
-         c_ij = (1 + 1/math.sqrt(p)*(real+3)**deg )*random.uniform(1-noise, 1+noise)
-         
-         where p is the number of features of the model, real is the simulated real cost,
-         deg controls the misespicification of the linear model by creating a polynomial of 
-         higher degree, noise is the half-width perturbation.
-   
+Here, we generate the shortest path instances as described in `Smart “predict, then optimize” (2021)` paper.
 
-Function generate_instance receive two parameters:
-    K: the amount of instances to generate.
-    p: the number of features to generate per instance.
-    deg: controls the amount of model misspecification
-    noise: random perturbation of the real cost
+To create the instances, first create a folder named `synthetic_path` and then run `python simulate_shortest_path.py`.
 
-Function compute_shortest_path(data_file): Solve all the instances in data_file
-and store it in a file with a prefix "sol_"
-
-References
-Elmachtoub, A. N., & Grigas, P. (2021). Smart “predict, then optimize”. Management Science.
+* Each instance is 5x5 grid and the we have to find the shortest path problem from the southwest corner of to the northeast corner. 
+With this code, we generate training set of 100, 1000 and 5000 instances.
+* Like the SPO paper, we also vary the noise and the degree parameters
