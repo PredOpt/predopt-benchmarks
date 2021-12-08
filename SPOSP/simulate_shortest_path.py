@@ -69,7 +69,7 @@ class Gurobi_shortestpath:
         reduced_A = A.T[x.astype(bool)]
         return np.where(reduced_A==-1)[1]
     def multishortestpath(self,source, target):
-        obj = self.shortestpath(source, target)[1]
+        # obj = self.shortestpath(source, target)[1]
         G = self.G
         A = nx.incidence_matrix(G,oriented=True).todense()
         edge_attributes = list(G.edges(data = True))
@@ -88,7 +88,7 @@ class Gurobi_shortestpath:
         model.setParam('PoolSearchMode', 2)
         model.setParam('PoolSolutions', 10)
         #model.PoolObjBound(obj)
-        model.setParam('PoolGap', 0.0)
+        model.setParam('PoolGap', 0.)
         model.optimize()
         return model.SolCount
 
@@ -193,7 +193,7 @@ def compute_shortest_path(data_file):
     G.add_edges_from(E)
     data_sol = data_file.replace('/','/sol_')
     ff = open(data_sol,'w')
-    ff.write('i,z,n_optimal'+','.join(['w_{0}'.format(e) for e in E])+'\n')
+    ff.write('i,z,n_optimal,'+','.join(['w_{0}'.format(e) for e in E])+'\n')
 
     for i in N:
         for e in E:
@@ -216,9 +216,11 @@ def compute_shortest_path(data_file):
                 
         
         ff.write(','.join([str(i),str(z),str(n_optimal)]+[str(w[e]) for e in E])+'\n')
-        if i==0:
-            print('PAth 0', z,path)
-            print([c[i,e] for e in pathGraph.edges()])
+        if n_optimal >1:
+            print( 'Non unique solutuins for datafile {} instance {} edge {}'.format(data_file, i,e) )
+        # if i==0:
+        #     print('PAth 0', z,path)
+        #     print([c[i,e] for e in pathGraph.edges()])
     ff.close()
     
     return 'ok'
