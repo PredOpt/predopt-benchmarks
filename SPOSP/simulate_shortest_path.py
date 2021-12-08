@@ -33,6 +33,66 @@ import networkx as nx
 import math
 import pandas as pd
 import numpy as np
+import gurobipy as gp
+
+class Gurobi_shortestpath:
+    def __init__(self,G):
+        self.G = G
+    def shortestpath(self,source, target):
+        G = self.G
+        A = nx.incidence_matrix(G,oriented=True).todense()
+        edge_attributes = list(G.edges(data = True))
+        c = np.array([e[2]['weight'] for e in edge_attributes])
+
+        b = np.zeros(len(A))
+        b [source] = -1
+        b[target ]= 1    
+
+        model = gp.Model()
+        model.setParam('OutputFlag', 0)
+        x = model.addMVar(shape=A.shape[1], vtype=gp.GRB.BINARY, name="x")
+        model.setObjective(c @x, gp.GRB.MINIMIZE)
+        model.addConstr(A @ x == b, name="eq")
+        model.optimize()
+        if model.status==2:
+            return x.x, model.objVal   
+    def pathlength(self,x):
+        G = self.G
+        A = nx.incidence_matrix(G,oriented=True).todense()
+        edge_attributes = list(G.edges(data = True))
+        c = np.array([e[2]['weight'] for e in edge_attributes])        
+        return c.dot(x)
+    def traversepath(self,x):
+        G = self.G
+        A = nx.incidence_matrix(G,oriented=True).todense()
+        
+        reduced_A = A.T[x.astype(bool)]
+        return np.where(reduced_A==-1)[1]
+    def multishortestpath(self,source, target):
+        obj = self.shortestpath(source, target)[1]
+        G = self.G
+        A = nx.incidence_matrix(G,oriented=True).todense()
+        edge_attributes = list(G.edges(data = True))
+        c = np.array([e[2]['weight'] for e in edge_attributes])
+        
+        b = np.zeros(len(A))
+        b [source] = -1
+        b[target ]= 1    
+
+
+        model = gp.Model()
+        model.setParam('OutputFlag', 0)
+        x = model.addMVar(shape=A.shape[1], vtype=gp.GRB.BINARY, name="x")
+        model.setObjective(c @x, gp.GRB.MINIMIZE)
+        model.addConstr(A @ x == b, name="eq")
+        model.setParam('PoolSearchMode', 2)
+        model.setParam('PoolSolutions', 10)
+        #model.PoolObjBound(obj)
+        model.setParam('PoolGap', 0.0)
+        model.optimize()
+        return model.SolCount
+
+
 
 def bernoulli(p):
     
@@ -133,7 +193,7 @@ def compute_shortest_path(data_file):
     G.add_edges_from(E)
     data_sol = data_file.replace('/','/sol_')
     ff = open(data_sol,'w')
-    ff.write('i,z,'+','.join(['w_{0}'.format(e) for e in E])+'\n')
+    ff.write('i,z,n_optimal'+','.join(['w_{0}'.format(e) for e in E])+'\n')
 
     for i in N:
         for e in E:
@@ -141,8 +201,11 @@ def compute_shortest_path(data_file):
             G[e[0]][e[1]]['weight'] = c[i,e]
             if i ==0: 
                 print(e, c[i,e])
-        z = nx.shortest_path_length(G, source=s, target=t, weight='weight')
-        path = nx.shortest_path(G, source=s, target=t)
+        graph = Gurobi_shortestpath(G)
+        n_optimal = graph.multishortestpath(source=s, target=t)
+
+        z = nx.bellman_ford_path_length(G, source=s, target=t, weight='weight')
+        path = nx.bellman_ford_path(G, source=s, target=t)
         pathGraph =nx.path_graph(path)
         w = {}
         for e in E:
@@ -152,7 +215,7 @@ def compute_shortest_path(data_file):
                 w[e] = 0
                 
         
-        ff.write(','.join([str(i),str(z)]+[str(w[e]) for e in E])+'\n')
+        ff.write(','.join([str(i),str(z),str(n_optimal)]+[str(w[e]) for e in E])+'\n')
         if i==0:
             print('PAth 0', z,path)
             print([c[i,e] for e in pathGraph.edges()])
