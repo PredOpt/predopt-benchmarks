@@ -4,9 +4,10 @@ import pickle as pkl
 import argparse
 import gurobipy as gp
 from gurobipy import GRB
+import cvxpy as cp
 
 
-def get_markowitz(n,p,tau,L):
+def get_markowitz_grb(n,p,tau,L):
     e = np.ones(n)
     COV = np.matmul(L,L.T) + np.ones(n)*(0.01*tau)**2
     w_ = e/10
@@ -22,12 +23,42 @@ def get_markowitz(n,p,tau,L):
 
 
 # inputs: model, variables, objective
-def solve_markowitz(m,w,c):
-    obj = c @ w
+def solve_markowitz_grb(m,w,c):
+    obj = (-c) @ w   # maximize
     m.setObjective(obj)
     m.optimize()
 
     return np.array(w.X)  # solution
+
+
+
+
+
+
+
+# cvxpy versions
+def get_markowitz_constraints_cvx(n,p,tau,L):
+    e = np.ones(n)
+    COV = np.matmul(L,L.T) + np.ones(n)*(0.01*tau)**2
+    w_ = e/10
+    gamma = 2.25 * np.matmul( np.matmul(w_,COV), w_ )
+
+    x = cp.Variable(n)
+    constraints = [  cp.quad_form( x,COV ) <= gamma,
+                     e @ x <= 1 ]
+
+    return constraints, x
+
+
+def solve_markowitz_cvx(constraints,variables,c):
+    x = variables
+
+    prob = cp.Problem(cp.Maximize( c.T @ x ),   # (1/2)*cp.quad_form(x, P) +
+                      constraints)
+    prob.solve()
+
+    return np.array(x.value)
+
 
 
 
