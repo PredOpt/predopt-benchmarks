@@ -3,7 +3,7 @@ import networkx as nx
 import numpy as np 
 from torch import nn, optim
 import pytorch_lightning as pl
-from PO_models import twostage_regression, SPO, datawrapper
+from PO_models import twostage_regression, SPO,Blackbox,DCOL, datawrapper
 from torch.utils.data import DataLoader
 
 ######################################  Data Reading #########################################
@@ -22,14 +22,25 @@ train_df =  datawrapper( x_train,y_train)
 test_df =  datawrapper( x_test,y_test)
 train_dl = DataLoader(train_df, batch_size= 16)
 test_dl = DataLoader(test_df, batch_size= 2)
-######################################  Two Stage #########################################
-trainer = pl.Trainer(max_epochs= 20,  min_epochs=4)
-model = twostage_regression(net=nn.Linear(5,1) ,lr= 0.01)
-trainer.fit(model, train_dl)
-result = trainer.test(dataloaders=test_dl)
+# ######################################  Two Stage #########################################
+# trainer = pl.Trainer(max_epochs= 20,  min_epochs=4)
+# model = twostage_regression(net=nn.Linear(5,1) ,lr= 0.01)
+# trainer.fit(model, train_dl,test_dl)
+# result = trainer.test(dataloaders=test_dl)
 
-######################################  SPO #########################################
+# ######################################  SPO #########################################
+# trainer = pl.Trainer(max_epochs= 20,  min_epochs=4)
+# model = SPO(net=nn.Linear(5,1) ,lr= 0.01)
+# trainer.fit(model, train_dl, test_dl)
+# result = trainer.test(dataloaders=test_dl)
+# ######################################  Blackbox #########################################
+# trainer = pl.Trainer(max_epochs= 20,  min_epochs=4)
+# model = Blackbox(net=nn.Linear(5,1) ,lr= 0.01)
+# trainer.fit(model, train_dl, test_dl)
+# result = trainer.test(dataloaders=test_dl)
+#####################################  Differentiable Convex Optimization Layers  #########################################
 trainer = pl.Trainer(max_epochs= 20,  min_epochs=4)
-model = SPO(net=nn.Linear(5,1) ,lr= 0.01)
-trainer.fit(model, train_dl)
+model = DCOL(net=nn.Linear(5,1) ,lr= 0.01)
+trainer.fit(model, train_dl, test_dl)
 result = trainer.test(dataloaders=test_dl)
+#####################################  QPTL  #########################################
