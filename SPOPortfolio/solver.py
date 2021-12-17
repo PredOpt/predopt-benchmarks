@@ -1,5 +1,9 @@
+import sys
+sys.path.insert(0, '..')
+from predopt_models import Solver
 import numpy as np
 import math
+import torch
 import pickle as pkl
 import argparse
 import gurobipy as gp
@@ -7,13 +11,43 @@ from gurobipy import GRB
 import cvxpy as cp
 
 
-def get_markowitz_grb(n,p,tau,L):
+class PortfolioSolverMarkowitz(Solver):
+    def __init__(self, n, p, tau, L):
+        self.e = np.ones(n)
+        self.COV = np.matmul(L,L.T) + np.ones(n)*(0.01*tau)**2
+        w_ = self.e/10
+        self.gamma = 2.25 * np.matmul( np.matmul(w_,self.COV), w_ )
+        self.m = gp.Model("qp")
+        self.m.setParam('OutputFlag', 0)
+        self.w = self.m.addMVar(shape=n, lb=0.0, vtype=GRB.CONTINUOUS, name="w")
+
+        self.m.addConstr(self.e @ self.w <= 1, "1")
+        self.m.addConstr(self.w @ self.COV @ self.w <= self.gamma, "2") 
+
+    def solve_markowitz(self, c):
+        self.m.reset()
+        obj = c @ self.w
+        self.m.setObjective(obj)
+        self.m.optimize()
+        return np.array(self.w.X)
+
+    def solve_from_torch(self, y_torch: torch.Tensor):
+        y = y_torch if isinstance(y_torch, np.ndarray) else y_torch.detach().numpy()
+        return torch.from_numpy(self.solve_markowitz(y)).float()
+    
+    def get_constraints_matrix_form(self):
+        """This problem has quadratic constraints, not clear what to return here
+        """
+        return (None, None, None, None)
+
+def get_markowitz(n,p,tau,L):
     e = np.ones(n)
     COV = np.matmul(L,L.T) + np.ones(n)*(0.01*tau)**2
     w_ = e/10
     gamma = 2.25 * np.matmul( np.matmul(w_,COV), w_ )
 
     m = gp.Model("qp")
+    m.setParam('OutputFlag', 0)
     w = m.addMVar(shape=n, lb=0.0, vtype=GRB.CONTINUOUS, name="w")
 
     m.addConstr(e @ w <= 1, "1")
