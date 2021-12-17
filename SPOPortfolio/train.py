@@ -1,9 +1,13 @@
+import sys
+sys.path.insert(0, '..')
+from predopt_models import Datawrapper, TwoStageRegression
 import torch
 import torch.nn as nn
 import numpy as np
 import pickle
 import math
-from solver import get_markowitz, solve_markowitz
+from solver import get_markowitz, solve_markowitz, PortfolioSolverMarkowitz
+import pytorch_lightning as pl
 import argparse
 
 
@@ -26,6 +30,7 @@ def spo_grad(c_true, c_pred, solver, variables):
     for i in range(len(c_spo)):    # iterate the batch
         sol_true = solve_markowitz(solver,variables, np.array(c_true[i]))
         sol_spo  = solve_markowitz(solver,variables, np.array(c_spo[i]))
+        sol_pred  = solve_markowitz(solver,variables, np.array(c_pred[i]))
         grad.append(  torch.Tensor(sol_spo - sol_true)  )
         regret.append(  torch.dot(c_true, torch.Tensor(sol_true - sol_pred)  ) )   # this is only for diagnostic / results output
 
@@ -67,13 +72,38 @@ print( targets.shape )
 model = nn.Linear(p,n)
 optimizer = torch.optim.Adam( model.parameters(), lr=args.lr  )
 
-dataset = torch.utils.data.TensorDataset(inputs, targets)
+
+n_training = n_samples*9//10
+n_test = n_samples - n_training
+print("N training",n_training)
+x_train, y_train = inputs[:n_training], targets[:n_training]
+x_test, y_test = inputs[n_training:], targets[n_training:]
+dataset = torch.utils.data.TensorDataset(x_train, y_train)
 train_loader = torch.utils.data.DataLoader(dataset, batch_size = args.batsize)
+dataset_test = torch.utils.data.TensorDataset(x_test, y_test)
+test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=2)
 
 solver, variables = get_markowitz(n,p,tau,L)
 
-for epoch in range(0,args.epochs):
-    for batch_idx, (input, target) in enumerate(train_loader):
 
-        regret = train_fwdbwd_spo(model, optimizer, solver, variables, input, target)
-        print("regret = {}".format(regret.mean))
+if __name__ == '__main__':
+    
+    # for epoch in range(0,args.epochs):
+    #     for batch_idx, (input, target) in enumerate(train_loader):
+
+    #         regret = train_fwdbwd_spo(model, optimizer, solver, variables, input, target)
+    #         print("regret = {}".format(regret.mean))
+
+    # with torch.no_grad():
+    #     for b_idx, (input, target) in enumerate(test_loader):
+    #         regret = train_fwdbwd_spo(model, optimizer, solver, variables, input, target)
+    #         print(f'regret ={regret.mean}')
+
+    
+    solver = PortfolioSolverMarkowitz(n, p, tau, L)
+    train_dl = torch.utils.data.DataLoader(Datawrapper(x_train, y_train, solver), batch_size = args.batsize)
+    test_dl = torch.utils.data.DataLoader(Datawrapper(x_test, y_test, solver), batch_size = 2)
+    trainer = pl.Trainer(max_epochs=args.epochs,  min_epochs=4)
+    model = TwoStageRegression(net=nn.Linear(5,1), exact_solver=solver, lr= 0.01)
+    trainer.fit(model, train_dl,test_dl)
+    result = trainer.test(test_dataloaders=test_dl)
