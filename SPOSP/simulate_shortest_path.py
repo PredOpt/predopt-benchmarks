@@ -121,8 +121,9 @@ def generate_instance(datapoints, p=5, deg = 2, noise = 0.5):
                 E.append((i,i+5))
     
     c = {}
-    
-    
+    if not os.path.exists('synthetic_path'):
+        
+        os.makedirs('synthetic_path')
     ff = open(file_output,'w')
     string=['at{0}'.format(i+1) for i in range(p)]
     att = ','.join(string)
@@ -225,17 +226,17 @@ def compute_shortest_path(data_file):
     
     return 'ok'
 
+if __name__ == '__main__':
 
 
+    degs = [1,2,4,6,8]
+    ns = [100,1000,5000]
+    noises = [0,0.5]
 
-degs = [1,2,4,6,8]
-ns = [100,1000,5000]
-noises = [0,0.5]
+    SETTINGS = [(n,noise,deg) for n in ns for noise in noises for deg in degs]
 
-SETTINGS = [(n,noise,deg) for n in ns for noise in noises for deg in degs]
-
-for (n,noise,deg) in SETTINGS:
-    generate_instance(n,noise=noise, deg = deg)
+    for (n,noise,deg) in SETTINGS:
+        generate_instance(n,noise=noise, deg = deg)
 
 
 
