@@ -5,15 +5,17 @@ from abc import abstractmethod
 # from cvxpylayers.torch import CvxpyLayer
 # import cvxpylayers
 import cvxpy as cp
+from numpy.core.numeric import indices
 import torch
 from torch import nn, optim
+import numpy as np
 # from torch.autograd import Variable
 # import torch.nn.functional as F
 # from torch.utils.data import DataLoader, random_split
 # from torchvision import transforms
 import pytorch_lightning as pl
 
-from predopt_losses import BlackBoxLoss, SPOLoss
+from predopt_losses import BlackBoxLoss, SPOLoss, NCECacheLoss
 # import numpy as np
 
 
@@ -114,7 +116,6 @@ class TwoStageRegression(pl.LightningModule):
 class SPO(TwoStageRegression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        #self.solver = solver
         self.po_criterion = SPOLoss(self.solver)
 
     def training_step(self, batch, batch_idx):
@@ -123,6 +124,8 @@ class SPO(TwoStageRegression):
         loss = 0
         for ii in range(len(y)):
             loss += self.po_criterion(y_hat[ii], y[ii], sol_true)
+        
+        # normalize over batch?
         return loss/len(y)
 
 
@@ -130,5 +133,35 @@ class Blackbox(SPO):
     def __init__(self,*args, mu=0.1, **kwargs):
         super().__init__(*args, **kwargs)
         self.po_criterion = BlackBoxLoss(self.solver, mu)
+        self.save_hyperparameters('mu')
 
+
+class NCECache(SPO):
+    def __init__(self, *args, cache_sols, growth=0.0, variant=1, seed=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.growth = growth
+        self.cache_sols = cache_sols
+        self.po_criterion = NCECacheLoss(variant)
+        self.save_hyperparameters('growth', 'variant', 'seed')
+        self.rng = np.random.default_rng(seed)
+    
+    def on_epoch_start(self) -> None:
+        return super().on_epoch_start()
+        # indices = np.arange(len(self.cache_sols))
+        # qty_to_solve = int(len(indices)*self.growth)
+        # self.growth_indices = set(self.rng.choice(indices, size=qty_to_solve, replace=False))
+
+    def training_step(self, batch, batch_idx):
+        x, y, sol_true = batch 
+        y_hat = self(x).squeeze()
+        loss = 0
+        for i in range(len(y)):
+            y_hat_i = y_hat[i]
+            # coin toss
+            if self.rng.binomial(1, self.growth) > 0:
+                sol_hat_i = self.solver(y_hat_i)
+                self.cache_sols = torch.cat(self.cache_sols, sol_hat_i).unique(dim=0)
+            loss += self.po_criterion(y_hat_i, y[i], sol_true[i], self.cache_sols)
+        return loss / len(y)
+            
 

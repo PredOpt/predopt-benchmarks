@@ -2,14 +2,13 @@ import torch
 from predopt_models import Solver
 
 
-def SPOLoss(solver:Solver):
+def SPOLoss(solver: Solver):
     class SPOLoss_cls(torch.autograd.Function):
         @staticmethod
         def forward(ctx, input, target, sol_true):
 
             sol_hat = solver.solve_from_torch(input)
             sol_spo = solver.solve_from_torch(2*input - target)
-            #sol_true = solver.solve_from_torch(target)
             ctx.save_for_backward(sol_spo,  sol_true, sol_hat)
             return (sol_hat - sol_true).dot(target)
 
@@ -28,7 +27,6 @@ def BlackBoxLoss(solver, mu=0.1):
 
             sol_hat = solver.solve_from_torch(input)
             sol_perturbed = solver.solve_from_torch(input + mu * target)
-            #sol_true = solver.solve_from_torch(target)
             ctx.save_for_backward(sol_perturbed,  sol_true, sol_hat)
             return (sol_hat - sol_true).dot(target)
 
@@ -38,3 +36,22 @@ def BlackBoxLoss(solver, mu=0.1):
             return -(sol_hat - sol_perturbed)/mu, None
 
     return BlackboxLoss_cls.apply
+
+
+def NCECacheLoss(variant:int):
+    class NCECacheLoss_cls(torch.nn.Module):
+        def forward(self, pred, target, sol_true, cache_sols):
+            pred = pred.view(*target.shape)
+            if variant == 1:  
+                loss = ((self.max_ind*(cache_sols - sol_true)*pred).sum())
+            if variant == 3: 
+                loss = ((self.max_ind*(cache_sols - sol_true)
+                        * (pred - target)).sum())
+            if variant == 4:  
+                loss = (self.max_ind*(cache_sols - sol_true)
+                        * pred).sum(dim=1).max()
+            if variant == 5:  
+                loss = (self.max_ind*(cache_sols - sol_true)*(pred -
+                                                              target)).sum(dim=1).max()
+    
+    return NCECacheLoss_cls.apply
