@@ -24,16 +24,12 @@ class PortfolioSolverMarkowitz(Solver):
         self.m.addConstr(self.e @ self.w <= 1, "1")
         self.m.addConstr(self.w @ self.COV @ self.w <= self.gamma, "2") 
 
-    def solve_markowitz(self, c):
+    def solve(self, c):
         self.m.reset()
         obj = c @ self.w
         self.m.setObjective(obj)
         self.m.optimize()
         return np.array(self.w.X)
-
-    def solve_from_torch(self, y_torch: torch.Tensor):
-        y = y_torch if isinstance(y_torch, np.ndarray) else y_torch.detach().numpy()
-        return torch.from_numpy(self.solve_markowitz(y)).float()
     
     def get_constraints_matrix_form(self):
         """This problem has quadratic constraints, not clear what to return here
