@@ -64,9 +64,6 @@ class Datawrapper:
 
 
 
-
-
-
 class TwoStageRegression(pl.LightningModule):
     def __init__(self, net:nn.Module, solver:Solver, lr=1e-1):
         super().__init__()
@@ -124,8 +121,6 @@ class SPO(TwoStageRegression):
         loss = 0
         for ii in range(len(y)):
             loss += self.po_criterion(y_hat[ii], y[ii], sol_true)
-        
-        # normalize over batch?
         return loss/len(y)
 
 
@@ -137,19 +132,13 @@ class Blackbox(SPO):
 
 
 class NCECache(SPO):
-    def __init__(self, *args, cache_sols, growth=0.0, variant=1, seed=None, **kwargs):
+    def __init__(self, *args, cache_sols=None, psolve=0.0, variant=1, seed=None, **kwargs):
         super().__init__(*args, **kwargs)
-        self.growth = growth
+        self.psolve = psolve
         self.cache_sols = cache_sols
         self.po_criterion = NCECacheLoss(variant)
-        self.save_hyperparameters('growth', 'variant', 'seed')
+        self.save_hyperparameters('psolve', 'variant')
         self.rng = np.random.default_rng(seed)
-    
-    def on_epoch_start(self) -> None:
-        return super().on_epoch_start()
-        # indices = np.arange(len(self.cache_sols))
-        # qty_to_solve = int(len(indices)*self.growth)
-        # self.growth_indices = set(self.rng.choice(indices, size=qty_to_solve, replace=False))
 
     def training_step(self, batch, batch_idx):
         x, y, sol_true = batch 
@@ -157,10 +146,9 @@ class NCECache(SPO):
         loss = 0
         for i in range(len(y)):
             y_hat_i = y_hat[i]
-            # coin toss
-            if self.rng.binomial(1, self.growth) > 0:
-                sol_hat_i = self.solver(y_hat_i)
-                self.cache_sols = torch.cat(self.cache_sols, sol_hat_i).unique(dim=0)
+            if self.rng.binomial(1, self.psolve) > 0:
+                sol_hat_i = self.solver.solve_from_torch(y_hat_i)
+                self.cache_sols = torch.cat((sol_hat_i.unsqueeze(0), self.cache_sols)).unique(dim=0)
             loss += self.po_criterion(y_hat_i, y[i], sol_true[i], self.cache_sols)
         return loss / len(y)
             

@@ -1,8 +1,7 @@
 import torch
-from predopt_models import Solver
 
 
-def SPOLoss(solver: Solver):
+def SPOLoss(solver):
     class SPOLoss_cls(torch.autograd.Function):
         @staticmethod
         def forward(ctx, input, target, sol_true):
@@ -39,19 +38,18 @@ def BlackBoxLoss(solver, mu=0.1):
 
 
 def NCECacheLoss(variant:int):
-    class NCECacheLoss_cls(torch.nn.Module):
-        def forward(self, pred, target, sol_true, cache_sols):
-            pred = pred.view(*target.shape)
-            if variant == 1:  
-                loss = ((self.max_ind*(cache_sols - sol_true)*pred).sum())
-            if variant == 3: 
-                loss = ((self.max_ind*(cache_sols - sol_true)
-                        * (pred - target)).sum())
-            if variant == 4:  
-                loss = (self.max_ind*(cache_sols - sol_true)
-                        * pred).sum(dim=1).max()
-            if variant == 5:  
-                loss = (self.max_ind*(cache_sols - sol_true)*(pred -
-                                                              target)).sum(dim=1).max()
-    
-    return NCECacheLoss_cls.apply
+    def forward(pred, target, sol_true, cache_sols):
+        pred = pred.view(*target.shape)
+        if variant == 1:  
+            loss = (((cache_sols - sol_true)*pred).sum())
+        if variant == 3: 
+            loss = (((cache_sols - sol_true)
+                    * (pred - target)).sum())
+        if variant == 4:  
+            loss = ((cache_sols - sol_true)
+                    * pred).sum(dim=1).max()
+        if variant == 5:  
+            loss = ((cache_sols - sol_true)*(pred -
+                                                            target)).sum(dim=1).max()
+        return loss
+    return forward
