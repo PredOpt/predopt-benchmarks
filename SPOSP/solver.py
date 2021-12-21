@@ -35,7 +35,7 @@ class ShortestpathSolver(Solver):
         b[-1] =1
         return A,b, None, None
     
-    def shortest_pathsolution(self, y):
+    def solve(self, y):
         '''
         y the vector of  edge weight
         '''
@@ -53,9 +53,6 @@ class ShortestpathSolver(Solver):
         if model.status==2:
             return x.x
 
-    def solve_from_torch(self, y_torch: torch.Tensor):
-        y = y_torch if isinstance(y_torch, np.ndarray) else y_torch.detach().numpy()
-        return torch.from_numpy(self.shortest_pathsolution(y)).float()
     
         
 

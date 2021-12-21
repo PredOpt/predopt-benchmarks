@@ -26,7 +26,7 @@ class Solver:
     Wrapper class for specifying and solving a problem
 
     """
-    @abstractmethod
+    
     def solve_from_torch(self, y_torch:torch.Tensor):
         """Solve the problem for a given cost vector
 
@@ -36,8 +36,12 @@ class Solver:
         Returns:
             vector of decision variables as a PyTorch Float tensor
         """
-        pass
+        return torch.from_numpy(self.solve(y_torch.detach().numpy())).float()
     
+    @abstractmethod
+    def solve(self, y: np.ndarray):
+        pass
+
     @abstractmethod
     def get_constraints_matrix_form(self):
         """Return linear constraints in matrix form, such that for decision variables `x`:
