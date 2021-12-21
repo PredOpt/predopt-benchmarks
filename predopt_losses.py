@@ -1,5 +1,6 @@
 import torch
-
+from qpthlocal.qp import QPFunction
+from qpthlocal.qp import QPSolvers
 
 def SPOLoss(solver):
     class SPOLoss_cls(torch.autograd.Function):
@@ -23,7 +24,6 @@ def BlackBoxLoss(solver, mu=0.1):
     class BlackboxLoss_cls(torch.autograd.Function):
         @staticmethod
         def forward(ctx, input, target, sol_true):
-
             sol_hat = solver.solve_from_torch(input)
             sol_perturbed = solver.solve_from_torch(input + mu * target)
             ctx.save_for_backward(sol_perturbed,  sol_true, sol_hat)
@@ -38,7 +38,7 @@ def BlackBoxLoss(solver, mu=0.1):
 
 
 def NCECacheLoss(variant:int):
-    def forward(pred, target, sol_true, cache_sols):
+    def get_loss(pred, target, sol_true, cache_sols):
         pred = pred.view(*target.shape)
         if variant == 1:  
             loss = (((cache_sols - sol_true)*pred).sum())
@@ -52,4 +52,16 @@ def NCECacheLoss(variant:int):
             loss = ((cache_sols - sol_true)*(pred -
                                                             target)).sum(dim=1).max()
         return loss
-    return forward
+    return get_loss
+
+def QPTLoss(A_trch, b_trch, G_trch, h_trch, Q_trch, model_params_quad):
+    def get_loss(input, target, sol_true):
+        sol_hat_qp = QPFunction(verbose=False, solver=QPSolvers.GUROBI, 
+                    model_params=model_params_quad)(Q_trch.expand(1, *Q_trch.shape),
+                        input, G_trch.expand(1, *G_trch.shape), 
+                        h_trch.expand(1, *h_trch.shape), 
+                        A_trch.expand(1, *A_trch.shape), b_trch.expand(1, *b_trch.shape))
+        return (sol_hat_qp - sol_true).dot(target)
+    
+
+    return get_loss

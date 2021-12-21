@@ -15,8 +15,9 @@ import numpy as np
 # from torchvision import transforms
 import pytorch_lightning as pl
 
-from predopt_losses import BlackBoxLoss, SPOLoss, NCECacheLoss
+from predopt_losses import BlackBoxLoss, SPOLoss, NCECacheLoss, QPTLoss
 # import numpy as np
+from qpthlocal.qp import make_gurobi_model
 
 
 class Solver:
@@ -153,3 +154,27 @@ class NCECache(SPO):
         return loss / len(y)
             
 
+class QPTL(SPO):
+    def __init__(self, *args, tau=1e-4, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.tau = tau 
+        self.save_hyperparameters('tau')
+        A, b, G, h = self.solver.get_constraints_matrix_form()
+        G_trch = torch.from_numpy(G if G is not None else np.random.randn(1,0)).float()
+        h_trch = torch.from_numpy(h if h is not None else np.array([])).float()
+        A_trch = torch.from_numpy(A if A is not None else np.random.randn(1,0)).float()
+        b_trch = torch.from_numpy(b if b is not None else np.array([])).float()
+        Q_trch = (self.tau)*torch.eye(G.shape[1] if G is not None else A.shape[1])
+        model_params_quad = make_gurobi_model(G, h, 
+            A, b, Q_trch.detach().numpy() )
+
+        self.po_criterion = QPTLoss(A_trch, b_trch, G_trch, h_trch, Q_trch, model_params_quad)
+if __name__ == '__main__':
+    from SPOSP.train import train_dl, test_dl
+    from SPOSP.solver import spsolver
+    trainer = pl.Trainer(max_epochs= 1,  min_epochs=4)
+    # model = TwoStageRegression(net=nn.Linear(5,1), solver=spsolver, lr= 0.01)
+    # model = NCECache(cache_sols=train_df.sol, net=nn.Linear(5,1), solver=spsolver, lr=0.001, psolve=0.1, seed=243)
+    model = QPTL(net=nn.Linear(5,1), solver=spsolver, lr= 0.01, tau=1e-5)
+    trainer.fit(model, train_dl,test_dl)
+    result = trainer.test(test_dataloaders=test_dl)
