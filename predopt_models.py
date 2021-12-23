@@ -71,12 +71,13 @@ class Datawrapper:
 
 
 class TwoStageRegression(pl.LightningModule):
-    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1, twostage_criterion=nn.MSELoss(reduction='mean')):
+    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1, twostage_criterion=nn.MSELoss(reduction='mean'), maximize=False):
         super().__init__()
         self.net = net
         self.lr = lr
         self.solver = solver
         self.criterion = twostage_criterion
+        self.maximize = maximize
         self.save_hyperparameters("lr", "twostage_criterion")
 
     def forward(self, x):
@@ -109,6 +110,12 @@ class TwoStageRegression(pl.LightningModule):
             'val_mse': mseloss,
             'val_regret':regret_loss
         }
+    
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["val_mse"] for x in outputs]).mean()
+        avg_acc = torch.stack([x["val_regret"] for x in outputs]).mean()
+        self.log("ptl/val_mse", avg_loss)
+        self.log("ptl/val_regret", avg_acc)
 
     def test_step(self, batch, batch_idx):
         # Here we just reuse the validation_step for testing
@@ -129,7 +136,7 @@ class SPO(TwoStageRegression):
         y_hat = self(x).squeeze()
         loss = 0
         for ii in range(len(y)):
-            loss += self.po_criterion(y_hat[ii], y[ii], sol_true)
+            loss += self.po_criterion(y_hat[ii], y[ii], sol_true[ii])
         return loss/len(y)
 
 
