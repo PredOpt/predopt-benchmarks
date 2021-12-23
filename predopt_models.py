@@ -7,7 +7,7 @@ from abc import abstractmethod
 import cvxpy as cp
 from numpy.core.numeric import indices
 import torch
-from torch import nn, optim
+from torch import Tensor, nn, optim
 import numpy as np
 # from torch.autograd import Variable
 # import torch.nn.functional as F
@@ -18,6 +18,7 @@ import pytorch_lightning as pl
 from predopt_losses import BlackBoxLoss, SPOLoss, NCECacheLoss, QPTLoss
 # import numpy as np
 from qpthlocal.qp import make_gurobi_model
+
 
 
 class Solver:
@@ -57,9 +58,9 @@ class Solver:
 
 class Datawrapper:
     def __init__(self, x,y, solver:Solver):
-        self.x = x
-        self.y = y
-        self.sol = torch.stack([solver.solve_from_torch(yi) for yi in y])
+        self.x = x if isinstance(x, torch.Tensor) else torch.from_numpy(x)
+        self.y = y if isinstance(x, torch.Tensor) else torch.from_numpy(y)
+        self.sol = torch.stack([solver.solve_from_torch(yi) for yi in self.y])
 
     def __len__(self):
         return len(self.y)
@@ -70,12 +71,13 @@ class Datawrapper:
 
 
 class TwoStageRegression(pl.LightningModule):
-    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1):
+    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1, twostage_criterion=nn.MSELoss(reduction='mean')):
         super().__init__()
         self.net = net
         self.lr = lr
         self.solver = solver
-        self.save_hyperparameters("lr")
+        self.criterion = twostage_criterion
+        self.save_hyperparameters("lr", "twostage_criterion")
 
     def forward(self, x):
         return self.net(x)
@@ -83,28 +85,30 @@ class TwoStageRegression(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
         y_hat = self(x).squeeze()
-        criterion = nn.MSELoss(reduction='mean')
-        loss = criterion(y_hat, y)
+        loss = self.criterion(y_hat, y)
         self.log("train_loss", loss, prog_bar=True,
                  on_step=True, on_epoch=True, )
         return loss
 
     def validation_step(self, batch, batch_idx):
-        criterion = nn.MSELoss(reduction='mean')
+        # criterion = nn.MSELoss(reduction='mean')
         x, y, sol_true = batch
         y_hat = self(x).squeeze()
-        mseloss = criterion(y_hat, y)
+        mseloss = self.criterion(y_hat.view(y.shape), y)
         regret_list = []
         calc_regret = SPOLoss(self.solver)
         for ii in range(len(y)):
-            regret_list.append(calc_regret(y_hat[ii], y[ii], sol_true[ii]))
+            regret_list.append(calc_regret(y_hat.view(y.shape)[ii], y[ii], sol_true[ii]))
         regret_loss = torch.mean(torch.tensor(regret_list))
 
         self.log("val_mse", mseloss, prog_bar=True,
                  on_step=True, on_epoch=True, )
         self.log("val_regret", regret_loss, prog_bar=True,
                  on_step=True, on_epoch=True, )
-        return mseloss
+        return {
+            'val_mse': mseloss,
+            'val_regret':regret_loss
+        }
 
     def test_step(self, batch, batch_idx):
         # Here we just reuse the validation_step for testing
@@ -179,6 +183,6 @@ if __name__ == '__main__':
     trainer = pl.Trainer(max_epochs= 1,  min_epochs=4)
     # model = TwoStageRegression(net=nn.Linear(5,1), solver=spsolver, lr= 0.01)
     # model = NCECache(cache_sols=train_df.sol, net=nn.Linear(5,1), solver=spsolver, lr=0.001, psolve=0.1, seed=243)
-    model = QPTL(net=nn.Linear(5,1), solver=spsolver, lr= 0.01, tau=1e-5)
+    model = QPTL(net=nn.Linear(5,1), solver=spsolver, lr= 0.01, tau=10)
     trainer.fit(model, train_dl,test_dl)
     result = trainer.test(test_dataloaders=test_dl)
