@@ -42,13 +42,13 @@ def NCECacheLoss(variant:int):
         pred = pred.view(*target.shape)
         if variant == 1:  
             loss = (((cache_sols - sol_true)*pred).sum())
-        if variant == 3: 
+        if variant == 2: 
             loss = (((cache_sols - sol_true)
                     * (pred - target)).sum())
-        if variant == 4:  
+        if variant == 3:  
             loss = ((cache_sols - sol_true)
                     * pred).sum(dim=1).max()
-        if variant == 5:  
+        if variant == 4:  
             loss = ((cache_sols - sol_true)*(pred -
                                                             target)).sum(dim=1).max()
         return loss
