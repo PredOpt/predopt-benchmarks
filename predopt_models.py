@@ -71,13 +71,13 @@ class Datawrapper:
 
 
 class TwoStageRegression(pl.LightningModule):
-    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1, twostage_criterion=nn.MSELoss(reduction='mean'), maximize=False):
+    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1, twostage_criterion=nn.MSELoss(reduction='mean'), minimize=True):
         super().__init__()
         self.net = net
         self.lr = lr
         self.solver = solver
         self.criterion = twostage_criterion
-        self.maximize = maximize
+        self.sign = 1 if minimize else -1
         self.save_hyperparameters("lr", "twostage_criterion")
 
     def forward(self, x):
@@ -97,7 +97,7 @@ class TwoStageRegression(pl.LightningModule):
         y_hat = self(x).squeeze()
         mseloss = self.criterion(y_hat.view(y.shape), y)
         regret_list = []
-        calc_regret = SPOLoss(self.solver)
+        calc_regret = SPOLoss(self.solver, sign=self.sign)
         for ii in range(len(y)):
             regret_list.append(calc_regret(y_hat.view(y.shape)[ii], y[ii], sol_true[ii]))
         regret_loss = torch.mean(torch.tensor(regret_list))
@@ -129,7 +129,7 @@ class TwoStageRegression(pl.LightningModule):
 class SPO(TwoStageRegression):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.po_criterion = SPOLoss(self.solver)
+        self.po_criterion = SPOLoss(self.solver, sign=self.sign)
 
     def training_step(self, batch, batch_idx):
         x, y, sol_true = batch
@@ -143,7 +143,7 @@ class SPO(TwoStageRegression):
 class Blackbox(SPO):
     def __init__(self,*args, mu=0.1, **kwargs):
         super().__init__(*args, **kwargs)
-        self.po_criterion = BlackBoxLoss(self.solver, mu)
+        self.po_criterion = BlackBoxLoss(self.solver, mu=mu, sign=self.sign)
         self.save_hyperparameters('mu')
 
 
@@ -152,7 +152,7 @@ class NCECache(SPO):
         super().__init__(*args, **kwargs)
         self.psolve = psolve
         self.cache_sols = cache_sols
-        self.po_criterion = NCECacheLoss(variant)
+        self.po_criterion = NCECacheLoss(variant, sign=self.sign)
         self.save_hyperparameters('psolve', 'variant')
         self.rng = np.random.default_rng(seed)
 
@@ -183,7 +183,7 @@ class QPTL(SPO):
         model_params_quad = make_gurobi_model(G, h, 
             A, b, Q_trch.detach().numpy() )
 
-        self.po_criterion = QPTLoss(A_trch, b_trch, G_trch, h_trch, Q_trch, model_params_quad)
+        self.po_criterion = QPTLoss(A_trch, b_trch, G_trch, h_trch, Q_trch, model_params_quad, sign=self.sign)
 if __name__ == '__main__':
     from SPOSP.train import train_dl, test_dl
     from SPOSP.solver import spsolver

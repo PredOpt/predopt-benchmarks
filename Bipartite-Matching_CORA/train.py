@@ -1,6 +1,6 @@
 import sys 
 sys.path.insert(0, '..')
-from predopt_models import Datawrapper, TwoStageRegression
+from predopt_models import Datawrapper, TwoStageRegression, Blackbox
 import numpy as np
 import torch
 import os 
@@ -69,8 +69,8 @@ def make_cora_net(n_features=2866, n_hidden=200, n_layers=2, n_targets=1):
         return nn.Sequential(*layers)
 
 if __name__ == '__main__':
-    trainer = pl.Trainer(max_epochs= 5,  min_epochs=4)
-    model = TwoStageRegression(net=make_cora_net(), solver=bmsolver, lr= 0.01, twostage_criterion=nn.MSELoss(reduction='mean'))
+    trainer = pl.Trainer(max_epochs= 10,  min_epochs=4)
+    model = TwoStageRegression(net=make_cora_net(), solver=bmsolver, lr= 0.005)
     trainer.fit(model, train_dl,test_dl)
     result = trainer.test(test_dataloaders=test_dl)
 
