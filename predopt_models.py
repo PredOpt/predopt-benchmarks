@@ -78,7 +78,7 @@ class TwoStageRegression(pl.LightningModule):
         self.solver = solver
         self.criterion = twostage_criterion
         self.sign = 1 if minimize else -1
-        self.save_hyperparameters("lr", "twostage_criterion")
+        self.save_hyperparameters("lr")
 
     def forward(self, x):
         return self.net(x)

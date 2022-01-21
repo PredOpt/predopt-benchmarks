@@ -21,7 +21,7 @@ train_dl, valid_dl, test_dl = get_dataloaders(os.path.join(os.path.dirname(os.pa
 unique_id = str(time.time_ns())[4:]
 callbacks = [EarlyStopping(monitor="val_regret", patience=2)]
 def make_trainer(name):
-    return  pl.Trainer(max_epochs= 20, 
+    return  pl.Trainer(max_epochs= 20, min_epochs=1, 
     logger=TensorBoardLogger(
             save_dir=os.path.dirname(os.path.abspath(__file__)), name=f"runs/{name}_{unique_id}", version="."
         ),
@@ -30,7 +30,7 @@ def make_trainer(name):
 res = []
 ######################################  Two Stage #########################################
 trainer = make_trainer('2S-MSE')
-model = TwoStageRegression(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-3)
+model = TwoStageRegression(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-5, minimize=False)
 trainer.fit(model, train_dl, valid_dl)
 result = trainer.test(test_dataloaders=test_dl)
 d = pd.Series(result[0])
@@ -38,7 +38,7 @@ d['method'] = "2S-MSE"
 res += [d]
 
 trainer = make_trainer('2S-CE')
-model = TwoStageRegression(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-3, twostage_criterion=nn.BCELoss())
+model = TwoStageRegression(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-5, twostage_criterion=nn.BCELoss(), minimize=False)
 trainer.fit(model, train_dl, valid_dl)
 result = trainer.test(test_dataloaders=test_dl)
 d = pd.Series(result[0])
@@ -46,7 +46,7 @@ d['method'] = "2S-CE"
 res += [d]
 # ######################################  SPO #########################################
 trainer = make_trainer('SPO')
-model = SPO(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-3)
+model = SPO(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-5, twostage_criterion=nn.BCELoss(), minimize=False)
 trainer.fit(model, train_dl, valid_dl)
 result = trainer.test(test_dataloaders=test_dl)
 d = pd.Series(result[0])
@@ -54,7 +54,7 @@ d['method'] = "SPO"
 res += [d]
 # ######################################  Blackbox #########################################
 trainer = make_trainer('BB')
-model = Blackbox(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-4, mu=1)
+model = Blackbox(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 1e-5, mu=1, twostage_criterion=nn.BCELoss(), minimize=False)
 trainer.fit(model, train_dl, valid_dl)
 result = trainer.test(test_dataloaders=test_dl)
 d = pd.Series(result[0])
@@ -67,7 +67,7 @@ for batch in train_dl:
     cache.append(sols)
 cache_sols = torch.cat(cache)
 trainer = make_trainer('NCE100')
-model = NCECache(net=make_cora_net() , solver=BipartiteMatchingSolver(), cache_sols= cache_sols,lr= 1e-3, psolve=1, variant=4)
+model = NCECache(net=make_cora_net() , solver=BipartiteMatchingSolver(), cache_sols= cache_sols,lr= 1e-5, psolve=1, variant=4, twostage_criterion=nn.BCELoss(), minimize=False)
 trainer.fit(model, train_dl, valid_dl)
 result = trainer.test(test_dataloaders=test_dl)
 d = pd.Series(result[0])
@@ -75,7 +75,7 @@ d['method'] = "NCE100"
 res += [d]
 
 trainer = make_trainer('NCE10')
-model = NCECache(net=make_cora_net() , solver=BipartiteMatchingSolver(), cache_sols= cache_sols,lr= 1e-3, psolve=0.1, variant=4)
+model = NCECache(net=make_cora_net() , solver=BipartiteMatchingSolver(), cache_sols= torch.cat(cache),lr= 1e-5, psolve=0.1, variant=4, twostage_criterion=nn.BCELoss(), minimize=False)
 trainer.fit(model, train_dl, valid_dl)
 result = trainer.test(test_dataloaders=test_dl)
 d = pd.Series(result[0])
@@ -83,7 +83,7 @@ d['method'] = "NCE10"
 res += [d]
 #####################################  QPTL  #########################################
 trainer = make_trainer('QPTL')
-model = QPTL(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 0.01, tau=0.01)
+model = QPTL(net=make_cora_net() , solver=BipartiteMatchingSolver(), lr= 0.0001, tau=0.01, twostage_criterion=nn.BCELoss(), minimize=False)
 trainer.fit(model, train_dl, valid_dl)
 result = trainer.test(test_dataloaders=test_dl)
 d = pd.Series(result[0])

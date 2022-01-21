@@ -47,11 +47,9 @@ class BipartiteMatchingSolver(Solver):
         h = np.concatenate((self.b1, self.b2))
         return None, None, G, h
 
-    def solve(self, y_torch: np.ndarray):
+    def solve(self, y: np.ndarray):
         self.model.reset()
-        y = -y_torch
-        _, _, G, h = self.get_constraints_matrix_form()
-        self.model.setObjective(y @ self.x, gp.GRB.MINIMIZE)
+        self.model.setObjective(y @ self.x, gp.GRB.MAXIMIZE)
         self.model.optimize()
         return self.x.X
 
