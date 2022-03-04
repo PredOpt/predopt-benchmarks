@@ -1,2 +1,9 @@
-networkx
 numpy
+networkx
+gurobipy
+ortools
+pandas
+psutil
+pytorch_lightning
+ray
+torch
