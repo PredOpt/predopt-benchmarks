@@ -53,4 +53,21 @@ class BipartiteMatchingSolver(Solver):
         self.model.optimize()
         return self.x.X
 
+
+
+class BipartiteMatchingPool(BipartiteMatchingSolver):
+    def solve(self, y:np.ndarray):
+        self.model.setParam('PoolSearchMode', 2)
+        self.model.setParam('PoolSolutions', 10)
+        self.model.setParam('PoolGap', 0.0)
+        self.model.setObjective(y @ self.x, gp.GRB.MAXIMIZE)
+        self.model.optimize()
+        xs = [] 
+        for i in range(self.model.SolCount):
+            self.model.setParam('SolutionNumber', i)
+            xs.append(np.asfarray(self.model.Xn))
+
+        return np.asfarray(xs)
+
+
         

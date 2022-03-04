@@ -1,5 +1,6 @@
 import sys
 import os
+from numpy import fix
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from ray.tune.stopper import TrialPlateauStopper
@@ -8,8 +9,8 @@ from ray.tune.progress_reporter import CLIReporter
 import torch 
 import psutil 
 import gc
-from predopt_models import TwoStageRegression, Blackbox, SPO, NCECache, QPTL
-from solver import BipartiteMatchingSolver
+from predopt_models import TwoStageRegression, Blackbox, SPO, NCECache, QPTL, SPOTieBreak
+from solver import BipartiteMatchingSolver, BipartiteMatchingPool
 from train import get_dataloaders, make_cora_net
 import pytorch_lightning as pl
 import torch.nn as nn
@@ -40,9 +41,11 @@ def train_tune(config, fixed_params, num_epochs=10, num_gpus=0.0, data_path='', 
             _,_, sols = batch 
             cache.append(sols)
         cache_sols = torch.cat(cache)
-        model = method_cls(net=make_cora_net(), solver=BipartiteMatchingSolver(), cache_sols=cache_sols, **config, **fixed_params)
+        model = method_cls(net=make_cora_net(), solver=BipartiteMatchingSolver(),cache_sols=cache_sols, **config, **fixed_params)
+    elif method_cls == SPOTieBreak:
+        model = method_cls(net=make_cora_net(), solver=BipartiteMatchingSolver(), solver_pool=BipartiteMatchingPool(), **config, **fixed_params)
     else:
-        model = method_cls(net=make_cora_net(), solver=BipartiteMatchingSolver(), **config, **fixed_params)
+        model = method_cls(net=make_cora_net(), solver=BipartiteMatchingSolver(), twostage_criterion=nn.BCELoss(), **config, **fixed_params)
     trainer = pl.Trainer(
         max_epochs=num_epochs,
         gpus=math.ceil(num_gpus),
@@ -57,24 +60,27 @@ def train_tune(config, fixed_params, num_epochs=10, num_gpus=0.0, data_path='', 
 
 configs = {
     TwoStageRegression: {
-        'lr':tune.grid_search([1e-2, 1e-3]),
+        'lr':tune.grid_search([1e-2, 5e-3, 1e-3,5e-4]),
     },
-    SPO:{
-        'lr':tune.grid_search([1e-2,1e-3, 1e-4]),
-    },
-    Blackbox:{
-        'lr':tune.grid_search([5e-4, 1e-3, 1e-4]),
-        'mu':tune.grid_search([0.1, 1, 10, 50])
-    },
-    NCECache:{
-        # 'lr':tune.grid_search([5e-4, 1e-3, 1e-4]),
-        'lr':tune.choice([1e-3]),
-        'variant':tune.grid_search(list(np.arange(1,5)))
-    },
-    QPTL: {
-        'lr':tune.grid_search([1e-2, 1e-3, 1e-4]),
-        'tau': tune.grid_search([1e-4, 1e-2, 1, 10, 50])
-    }
+    # SPO:{
+    #     'lr':tune.grid_search([1e-2,1e-3, 1e-4]),
+    # },
+    # SPOTieBreak:{
+    #     'lr':tune.grid_search([1e-2, 1e-3, 5e-3, 1e-4, 5e-4])
+    # },
+    # Blackbox:{
+    #     'lr':tune.grid_search([5e-4, 1e-3, 1e-4]),
+    #     'mu':tune.grid_search([0.1, 1, 10, 50])
+    # },
+    # NCECache:{
+    #     'lr':tune.grid_search([5e-4, 1e-3, 5e-3, 1e-4]),
+    #     #'lr':tune.choice([1e-3]),
+    #     'variant':tune.grid_search(list(np.arange(1,5)))
+    # },
+    # QPTL: {
+    #     'lr':tune.grid_search([1e-2, 1e-3, 1e-4]),
+    #     'tau': tune.grid_search([1e-4, 1e-2, 1, 10, 50])
+    # }
 }
 
 constants = defaultdict(dict) 
@@ -82,7 +88,7 @@ constants[NCECache]= {
         'psolve':1.0,
     }
 
-def tune_asha(method=TwoStageRegression, num_samples=5, num_epochs=10, gpus_per_trial=0, cpus_per_trial=1, data_path='../data/'):
+def tune_asha(method=TwoStageRegression, num_samples=5, num_epochs=10, gpus_per_trial=0, cpus_per_trial=1, n_workers=1, data_path='../data/'):
     
     config = configs[method]
     scheduler = ASHAScheduler(
@@ -92,6 +98,7 @@ def tune_asha(method=TwoStageRegression, num_samples=5, num_epochs=10, gpus_per_
     )
 
     fixed_params = constants[method]
+    fixed_params['minimize'] = False
     train_fn_with_parameters = tune.with_parameters(
         train_tune,
         fixed_params=fixed_params,
@@ -106,8 +113,6 @@ def tune_asha(method=TwoStageRegression, num_samples=5, num_epochs=10, gpus_per_
         metric_columns=['regret', 'mse', 'training_iteration']
     )
 
-    
-
     resource_per_trial = {'cpu':cpus_per_trial, 'gpu':gpus_per_trial}
     analysis = tune.run(train_fn_with_parameters,
         resources_per_trial=resource_per_trial,
@@ -117,18 +122,24 @@ def tune_asha(method=TwoStageRegression, num_samples=5, num_epochs=10, gpus_per_
         num_samples=num_samples,
         scheduler=scheduler,
         progress_reporter=reporter,
-        name=f"tune_bmatch_asha_{method.__name__}"
+        max_concurrent_trials=n_workers,
+        name=f"tune_bmatch_asha_{method.__name__}",
     )
-    print(analysis.best_config)
+    #print(analysis.best_config)
     return analysis.best_result_df
 
 
 
 if __name__ == '__main__':
-    import pickle
-    print(pickle.dumps(train_tune))
-    for method in [QPTL]:#, SPO, Blackbox, NCECache, QPTL]:
-        df:pd.DataFrame = tune_asha(method=method, num_samples=5, cpus_per_trial=7, num_epochs=4,
+    import multiprocessing as mp
+    list_df = []
+    num_workers = min(mp.cpu_count(),6 )
+    for method in [TwoStageRegression]:#[SPOTieBreak, NCECache, SPO, Blackbox, NCECache, QPTL]:
+        df:pd.DataFrame = tune_asha(method=method, num_samples=5, cpus_per_trial=1, num_epochs=10, n_workers=num_workers,
          data_path=os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data'))
-        df.to_csv('toast.csv')
+        df['method'] = method.__name__
+        with open('hparam_tune_matching_BCE_2S.csv', 'a') as f: 
+            df.to_csv(f, index=False, header=f.tell()==0)
+        
+        
         

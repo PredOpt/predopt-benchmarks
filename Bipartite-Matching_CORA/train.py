@@ -1,10 +1,10 @@
 import sys 
 sys.path.insert(0, '..')
-from predopt_models import Datawrapper, TwoStageRegression, Blackbox
+from predopt_models import Datawrapper, TwoStageRegression, SPOTieBreak
 import numpy as np
 import torch
 import os 
-from solver import BipartiteMatchingSolver
+from solver import BipartiteMatchingSolver, BipartiteMatchingPool
 from torch.utils.data import DataLoader
 import torch.nn as nn
 import pytorch_lightning as pl
@@ -22,7 +22,7 @@ bmsolver = BipartiteMatchingSolver()
 train_data = Datawrapper(x_train, y_train, bmsolver)
 valid_data = Datawrapper(x_valid, y_valid, bmsolver)
 test_data = Datawrapper(x_test, y_test, bmsolver)
-train_dl = DataLoader(train_data, batch_size=5)
+train_dl = DataLoader(train_data, batch_size=3, shuffle=True)
 valid_dl = DataLoader(valid_data, batch_size=2)
 test_dl = DataLoader(test_data, batch_size=2)
 
@@ -40,7 +40,7 @@ def get_dataloaders(data_path):
     train_data = Datawrapper(x_train, y_train, bmsolver)
     valid_data = Datawrapper(x_valid, y_valid, bmsolver)
     test_data = Datawrapper(x_test, y_test, bmsolver)
-    train_dl = DataLoader(train_data, batch_size=5)
+    train_dl = DataLoader(train_data, batch_size=3, num_workers=3, shuffle=True)
     valid_dl = DataLoader(valid_data, batch_size=2)
     test_dl = DataLoader(test_data, batch_size=2)
     return train_dl, valid_dl, test_dl
@@ -70,7 +70,8 @@ def make_cora_net(n_features=2866, n_hidden=200, n_layers=2, n_targets=1):
 
 if __name__ == '__main__':
     trainer = pl.Trainer(max_epochs= 10,  min_epochs=4)
-    model = TwoStageRegression(net=make_cora_net(), solver=bmsolver, lr= 0.005)
+    bmsolver_pool = BipartiteMatchingPool()
+    model = SPOTieBreak(net=make_cora_net(), solver=bmsolver, solver_pool=bmsolver_pool, lr= 0.001)
     trainer.fit(model, train_dl,test_dl)
     result = trainer.test(test_dataloaders=test_dl)
 

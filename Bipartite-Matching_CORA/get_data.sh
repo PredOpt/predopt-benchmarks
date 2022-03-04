@@ -1,13 +1,15 @@
 #!/bin/bash
 echo 'downloading preprocessed CORA dataset...'
 wget -cq https://bryanwilder.github.io/files/data_decisions_benchmarks.zip && unzip -qqn data_decisions_benchmarks.zip 
-
+mkdir to_be_deleted
 echo 'done'
 echo 'cleaning...'
 # delete zip
-rm data_decisions_benchmarks.zip 
+mv data_decisions_benchmarks.zip to_be_deleted
 
 # delete non-relevant data
-rm benchmarks_release/budget_allocation_data.pickle benchmarks_release/diverse_recommendation_data.pickle benchmarks_release/readme.txt
-rm benchmarks_release/make_cora_dataset.py make_cora_dataset.py
+mv benchmarks_release/budget_allocation_data.pickle to_be_deleted
+mv benchmarks_release/diverse_recommendation_data.pickle to_be_deleted
+mv benchmarks_release/readme.txt to_be_deleted
 echo 'done'
+echo 'delete "to_be_deleted" dir'

@@ -15,7 +15,7 @@ import numpy as np
 # from torchvision import transforms
 import pytorch_lightning as pl
 
-from predopt_losses import BlackBoxLoss, SPOLoss, NCECacheLoss, QPTLoss
+from predopt_losses import BlackBoxLoss, SPOLoss, NCECacheLoss, QPTLoss, SPOLoss_tiebreak
 # import numpy as np
 from qpthlocal.qp import make_gurobi_model
 
@@ -71,13 +71,14 @@ class Datawrapper:
 
 
 class TwoStageRegression(pl.LightningModule):
-    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1, twostage_criterion=nn.MSELoss(reduction='mean'), minimize=True):
+    def __init__(self, net:nn.Module, solver:Solver, lr=1e-1, twostage_criterion=nn.MSELoss(reduction='mean'), minimize=True, clf=False):
         super().__init__()
         self.net = net
         self.lr = lr
         self.solver = solver
         self.criterion = twostage_criterion
         self.sign = 1 if minimize else -1
+        self.clf = clf
         self.save_hyperparameters("lr")
 
     def forward(self, x):
@@ -86,7 +87,8 @@ class TwoStageRegression(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         x, y, _ = batch
         y_hat = self(x).squeeze()
-        loss = self.criterion(y_hat, y)
+
+        loss = self.criterion(y_hat.view(y.shape), y)
         self.log("train_loss", loss, prog_bar=True,
                  on_step=True, on_epoch=True, )
         return loss
@@ -97,25 +99,42 @@ class TwoStageRegression(pl.LightningModule):
         y_hat = self(x).squeeze()
         mseloss = self.criterion(y_hat.view(y.shape), y)
         regret_list = []
+        regret_perc_list = []
         calc_regret = SPOLoss(self.solver, sign=self.sign)
         for ii in range(len(y)):
-            regret_list.append(calc_regret(y_hat.view(y.shape)[ii], y[ii], sol_true[ii]))
+            regret = calc_regret(y_hat.view(y.shape)[ii], y[ii], sol_true[ii])
+            regret_list.append(regret)
+            regret_perc_list.append(regret / (sol_true[ii] @ y[ii]) )
         regret_loss = torch.mean(torch.tensor(regret_list))
+        regret_perc_loss = torch.mean(torch.tensor(regret_perc_list))
+
+        sols_hat = torch.stack([ self.solver.solve_from_torch(y_h) for y_h in y_hat.view(y.shape)])
+        hamming = (sols_hat != sol_true).float().mean()
 
         self.log("val_mse", mseloss, prog_bar=True,
                  on_step=True, on_epoch=True, )
         self.log("val_regret", regret_loss, prog_bar=True,
                  on_step=True, on_epoch=True, )
+        self.log('val_hamming',hamming, prog_bar=True, on_step=True, on_epoch=True )
+        self.log('val_regret_pct', regret_perc_loss, prog_bar=True, on_step=True, on_epoch=True)
         return {
             'val_mse': mseloss,
-            'val_regret':regret_loss
+            'val_regret':regret_loss,
+            'val_hamming':hamming,
+            'val_regret_pct':regret_perc_loss
         }
     
     def validation_epoch_end(self, outputs):
-        avg_loss = torch.stack([x["val_mse"] for x in outputs]).mean()
-        avg_acc = torch.stack([x["val_regret"] for x in outputs]).mean()
-        self.log("ptl/val_mse", avg_loss)
-        self.log("ptl/val_regret", avg_acc)
+        # avg_loss = torch.stack([x["val_mse"] for x in outputs]).mean()
+        # avg_acc = torch.stack([x["val_regret"] for x in outputs]).mean()
+        # avg_hamming = torch.stack([x['val_hamming'] for x in outputs]).mean()
+        
+        # self.log("ptl/val_mse", avg_loss)
+        # self.log("ptl/val_regret", avg_acc)
+        # self.log('ptl/val_hamming', avg_hamming)
+        for metric_name in ['val_mse', 'val_regret', 'val_hamming', 'val_regret_pct']:
+            avg = torch.stack([x[metric_name] for x in outputs]).mean()
+            self.log(f"ptl/{metric_name}", avg)
 
     def test_step(self, batch, batch_idx):
         # Here we just reuse the validation_step for testing
@@ -133,11 +152,17 @@ class SPO(TwoStageRegression):
 
     def training_step(self, batch, batch_idx):
         x, y, sol_true = batch
-        y_hat = self(x).squeeze()
+        y_hat = self(x).squeeze(-1)
         loss = 0
         for ii in range(len(y)):
             loss += self.po_criterion(y_hat[ii], y[ii], sol_true[ii])
         return loss/len(y)
+
+class SPOTieBreak(SPO):
+    def __init__(self, *args, solver_pool=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.solver_pool = solver_pool
+        self.po_criterion = SPOLoss_tiebreak(solver_pool, sign=self.sign)
 
 
 class Blackbox(SPO):
