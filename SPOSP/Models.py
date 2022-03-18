@@ -9,6 +9,11 @@ import pytorch_lightning as pl
 import numpy as np
 import networkx as nx
 import gurobipy as gp
+import perturbations
+from imle.wrapper import imle
+from imle.target import TargetDistribution
+from imle.noise import SumOfGammaNoiseDistribution
+import fenchel_young as fy
 ###################################### Graph Structure ###################################################
 V = range(25)
 E = []
@@ -45,7 +50,14 @@ class shortestpath_solver:
         if model.status==2:
             return x.x
     def solution_fromtorch(self,y_torch):
-        return torch.from_numpy(self.shortest_pathsolution( y_torch.detach().numpy())).float()
+        if y_torch.dim()==1:
+            return torch.from_numpy(self.shortest_pathsolution( y_torch.detach().numpy())).float()
+        else:
+            solutions = []
+            for ii in range(len(y_torch)):
+                solutions.append(torch.from_numpy(self.shortest_pathsolution( y_torch[ii].detach().numpy())).float())
+            return torch.stack(solutions)
+        
 spsolver =  shortestpath_solver()
 ###################################### Wrapper #########################################
 class datawrapper():
@@ -329,7 +341,100 @@ class IntOpt(DCOL):
     def __init__(self,net,exact_solver = spsolver,lr=1e-1,thr=0.1,damping=1e-3):
         self.solver  = intoptsolver(thr=thr,damping=damping)
 
-        super().__init__(net,exact_solver,lr)   
+        super().__init__(net,exact_solver,lr)  
 
 
 
+###################################### I-MLE #########################################
+########## Code adapted from https://github.com/uclnlp/torch-imle/blob/main/annotation-cli.py ###########################
+
+
+
+class IMLE(twostage_regression):
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1):
+        super().__init__(net,exact_solver,lr)
+        self.solver = solver
+        self.save_hyperparameters("lr")
+    def training_step(self, batch, batch_idx):
+        x,y = batch
+        y_hat =  self(x).squeeze()
+        loss = 0
+
+        input_noise_temperature = 1.0
+        target_noise_temperature = 1.0
+
+        target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
+        noise_distribution = SumOfGammaNoiseDistribution(k=5, nb_iterations=100)
+
+        @imle(target_distribution=target_distribution,
+                noise_distribution=noise_distribution,
+                input_noise_temperature=input_noise_temperature,
+                target_noise_temperature=target_noise_temperature,
+                nb_samples=10)
+        def imle_solver(y):
+            #     I-MLE assumes that the solver solves a maximisation problem, but here the `solver` function solves
+            # a minimisation problem, so we flip the sign twice. Feed negative cost coefficient to imle_solver and then 
+            # flip it again to feed the actual cost to the solver
+            return spsolver.solution_fromtorch(-y)
+
+        ########### Also the forward pass returns the solution of the perturbed cost, which is bit strange
+        ###########
+
+
+
+        for ii in range(len(y)):
+            sol_hat = imle_solver(-y_hat[ii].unsqueeze(0)) # Feed neagtive cost coefficient
+            loss +=  (sol_hat*y[ii]).mean()
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss/len(y) 
+
+###################################### Differentiable Perturbed Optimizer #########################################
+
+class DPO(twostage_regression):
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1):
+        super().__init__(net,exact_solver,lr)
+        self.solver = solver
+        self.save_hyperparameters("lr")
+    def training_step(self, batch, batch_idx):
+        x,y = batch
+        y_hat =  self(x).squeeze()
+        loss = 0
+
+        @perturbations.perturbed(num_samples=10, sigma=0.1, noise='gumbel',batched = False)
+        def dpo_solver(y):
+            return spsolver.solution_fromtorch(-y)
+
+        for ii in range(len(y)):
+            sol_hat = dpo_solver(-y_hat[ii]) # Feed neagtive cost coefficient
+            loss +=  ( sol_hat  ).dot(y[ii])
+
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss/len(y) 
+
+
+
+################################ Implementation of a Fenchel-Young loss using perturbation techniques #########################################
+
+class FenchelYoung(twostage_regression):
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1):
+        super().__init__(net,exact_solver,lr)
+        self.solver = solver
+        self.save_hyperparameters("lr")
+    def training_step(self, batch, batch_idx):
+        x,y = batch
+        y_hat =  self(x).squeeze()
+        loss = 0
+
+        
+        def fy_solver(y):
+            return spsolver.solution_fromtorch(y)
+        ############# Define the Loss functions, we can set maximization to be false
+
+        criterion = fy.FenchelYoungLoss(fy_solver, num_samples=10, sigma=0.1,maximize = False, batched=False)
+
+        for ii in range(len(y)):
+            loss +=  criterion(y_hat[ii],y[ii])
+
+
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss/len(y) 
