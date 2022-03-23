@@ -87,9 +87,7 @@ train_loader = torch.utils.data.DataLoader(dataset, batch_size = args.batsize)
 dataset_test = torch.utils.data.TensorDataset(x_test, y_test)
 test_loader = torch.utils.data.DataLoader(dataset_test, batch_size=2)
 
-constraints, variables = get_markowitz_constraints_cvx(n,p,tau,L)
-if args.train_mode = 'blackbox':
-    blackbox_layer = BlackboxMarkowitzWrapper(constraints, variables, args.blackbox_lambda)()
+solver, variables = get_markowitz(n,p,tau,L)
 
 
 if __name__ == '__main__':

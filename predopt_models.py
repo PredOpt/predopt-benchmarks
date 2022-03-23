@@ -20,7 +20,6 @@ from predopt_losses import BlackBoxLoss, SPOLoss, NCECacheLoss, QPTLoss
 from qpthlocal.qp import make_gurobi_model
 
 
-
 class Solver:
     """Abstract Class
 
