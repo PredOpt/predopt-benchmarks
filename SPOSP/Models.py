@@ -125,8 +125,10 @@ def regret_aslist(solver, y_hat,y, minimize= True):
     return np.array(regret_list)
 ###################################### Regression Model based on MSE loss #########################################
 class twostage_regression(pl.LightningModule):
-    def __init__(self,net,exact_solver = spsolver, lr=1e-1):
+    def __init__(self,net,exact_solver = spsolver, lr=1e-1,seed=0):
         super().__init__()
+        pl.seed_everything(seed)
+        # Using seed for reproducibility
         self.net =  net
         self.lr = lr
         self.exact_solver = exact_solver
@@ -438,3 +440,89 @@ class FenchelYoung(twostage_regression):
 
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss/len(y) 
+################################ Noise Contrative Estimation ################################
+def batch_solve(solver, y,relaxation =False):
+    sol = []
+    for i in range(len(y)):
+        sol.append(   solver.solution_fromtorch(y[i]).reshape(1,-1)   )
+    return torch.cat(sol,0)
+def MAP(sol,y,solpool,minimize=True):
+    '''
+    sol, y and y_hat are torch array [batch_size,48]
+    solpool is torch array [currentpoolsize,48]
+    '''
+    mm = 1 if minimize else -1 
+    loss = 0
+    # print("shape check", sol.shape, y.shape,y_hat.shape, solpool.shape)
+    for ii in range(len(y)):
+        loss += torch.max(((sol[ii] - solpool )*(mm*y[ii]  )).sum(dim=1))
+    return loss
+def MAP_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+    sol = batch_solve(spsolver, y_hat,relaxation =False)
+    y = y_hat 
+    return MAP(sol,y,solpool,minimize)
+def MAP_hatc_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+    sol = batch_solve(spsolver, y_hat,relaxation =False)
+    y = y_hat - y_true
+    return MAP(sol,y,solpool,minimize)
+
+def NCE(sol,y,solpool,minimize=True):
+    '''
+    sol, y and y_hat are torch array [batch_size,48]
+    solpool is torch array [currentpoolsize,48]
+    '''
+    mm = 1 if minimize else -1 
+    loss = 0
+    # print("shape check", sol.shape, y.shape,y_hat.shape, solpool.shape)
+    for ii in range(len(y)):
+        loss += torch.mean(((sol[ii] - solpool )*(mm*y[ii]  )).sum(dim=1))
+    return loss
+def NCE_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+    sol = batch_solve( spsolver, y_hat,relaxation =False)
+    y = y_hat 
+    return NCE(sol,y,solpool,minimize)
+def NCE_hatc_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+    sol = batch_solve(spsolver, y_hat,relaxation =False)
+    y = y_hat - y_true
+    return NCE(sol,y,solpool,minimize)
+
+
+
+def growpool_fn(solver, solpool, y_hat):
+    '''
+    solpool is torch array [currentpoolsize,48]
+    y_hat is  torch array [batch_size,48]
+    '''
+    sol = batch_solve(solver, y_hat,relaxation =False).detach().numpy()
+    solpool_np = solpool.detach().numpy()
+    solpool_np = np.unique(np.append(solpool_np,sol,axis=0),axis=0)
+    # torch has no unique function, so we have to do this
+    return torch.from_numpy(solpool_np).float()
+class SemanticPO(twostage_regression):
+    def __init__(self,loss_fn,solpool, net,solver= spsolver,exact_solver = spsolver,growth=0.1,margin=0.,lr=1e-1):
+        super().__init__(net,exact_solver,lr)
+        # self.save_hyperparameters()
+        self.loss_fn = loss_fn
+        solpool_np = solpool.detach().numpy()
+        solpool_np = np.unique(solpool_np,axis=0)
+        # torch has no unique function, so we have to do this
+        self.solpool = torch.from_numpy(solpool_np).float()
+        self.growpool_fn = growpool_fn
+        self.growth = growth
+        self.margin = margin
+        self.solver = solver
+        self.save_hyperparameters("lr","growth","margin")
+    
+ 
+    def training_step(self, batch, batch_idx):
+        x,y = batch
+        y_hat =  self(x).squeeze()
+        if (np.random.random(1)[0]< self.growth) or len(self.solpool)==0:
+            #### We have to use seed
+            #### Also we are solving for all instances of a batch
+            self.solpool = self.growpool_fn(self.solver, self.solpool, y_hat)
+
+  
+        loss = self.loss_fn(y_hat,y,self.solpool, self.margin)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss

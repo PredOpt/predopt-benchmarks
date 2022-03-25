@@ -3,7 +3,7 @@ import networkx as nx
 import numpy as np 
 from torch import nn, optim
 import pytorch_lightning as pl
-from Models import QPTL, twostage_regression, SPO,Blackbox,DCOL,IntOpt, IMLE, DPO, FenchelYoung, datawrapper
+from Models import *
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
 import shutil
@@ -255,12 +255,78 @@ test_dl = DataLoader(test_df, batch_size= 50)
 
 
 
-#####################################  DPO  #########################################
-outputfile = "DPO_rslt.csv"
-ckpt_dir =  "ckpt_dir/DPO/"
-########## Hyperparams #########
-lr = 1e-3
+# #####################################  DPO  #########################################
+# outputfile = "DPO_rslt.csv"
+# ckpt_dir =  "ckpt_dir/DPO/"
+# ########## Hyperparams #########
+# lr = 1e-3
 
+
+# shutil.rmtree(ckpt_dir,ignore_errors=True)
+# checkpoint_callback = ModelCheckpoint(
+#             monitor="val_regret",
+#             dirpath= ckpt_dir,
+#             filename="model-{epoch:02d}-{val_loss:.2f}",
+#             mode="min")
+
+# trainer = pl.Trainer(max_epochs= 20,callbacks=[checkpoint_callback],  min_epochs=5)
+# model = DPO(net=nn.Linear(5,1) ,lr= lr)
+# trainer.fit(model, train_dl,valid_dl)
+# best_model_path = checkpoint_callback.best_model_path
+# model = DPO.load_from_checkpoint(best_model_path,
+# net=nn.Linear(5,1), lr= lr)
+
+# result = trainer.test(model, dataloaders=test_dl)
+# df = pd.DataFrame(result)
+# df ['model'] = 'DPO'
+# df ['noise'] = noise
+# df ['deg'] =  deg
+# df['N'] = N
+
+# df['lr'] = lr
+# with open(outputfile, 'a') as f:
+#     df.to_csv(f, header=f.tell()==0)
+
+
+# #####################################  FenchelYoung  #########################################
+# outputfile = "FenchelYoung_rslt.csv"
+# ckpt_dir =  "ckpt_dir/FenchelYoung/"
+# ########## Hyperparams #########
+# lr = 1e-3
+
+
+# shutil.rmtree(ckpt_dir,ignore_errors=True)
+# checkpoint_callback = ModelCheckpoint(
+#             monitor="val_regret",
+#             dirpath= ckpt_dir,
+#             filename="model-{epoch:02d}-{val_loss:.2f}",
+#             mode="min")
+
+# trainer = pl.Trainer(max_epochs= 20,callbacks=[checkpoint_callback],  min_epochs=5)
+# model = FenchelYoung(net=nn.Linear(5,1) ,lr= lr)
+# trainer.fit(model, train_dl,valid_dl)
+# best_model_path = checkpoint_callback.best_model_path
+# model = FenchelYoung.load_from_checkpoint(best_model_path,
+# net=nn.Linear(5,1), lr= lr)
+
+# result = trainer.test(model, dataloaders=test_dl)
+# df = pd.DataFrame(result)
+# df ['model'] = 'FenchelYoung'
+# df ['noise'] = noise
+# df ['deg'] =  deg
+# df['N'] = N
+
+# df['lr'] = lr
+# with open(outputfile, 'a') as f:
+#     df.to_csv(f, header=f.tell()==0)
+
+
+#####################################  Noise Contastive Estimation  #########################################
+outputfile = "NCE_rslt.csv"
+ckpt_dir =  "ckpt_dir/NCE/"
+########## Hyperparams #########
+lr, growth = 1e-3, 1.
+solpool = batch_solve(spsolver, torch.from_numpy(y_train),relaxation =False)
 
 shutil.rmtree(ckpt_dir,ignore_errors=True)
 checkpoint_callback = ModelCheckpoint(
@@ -270,40 +336,7 @@ checkpoint_callback = ModelCheckpoint(
             mode="min")
 
 trainer = pl.Trainer(max_epochs= 20,callbacks=[checkpoint_callback],  min_epochs=5)
-model = DPO(net=nn.Linear(5,1) ,lr= lr)
-trainer.fit(model, train_dl,valid_dl)
-best_model_path = checkpoint_callback.best_model_path
-model = DPO.load_from_checkpoint(best_model_path,
-net=nn.Linear(5,1), lr= lr)
-
-result = trainer.test(model, dataloaders=test_dl)
-df = pd.DataFrame(result)
-df ['model'] = 'DPO'
-df ['noise'] = noise
-df ['deg'] =  deg
-df['N'] = N
-
-df['lr'] = lr
-with open(outputfile, 'a') as f:
-    df.to_csv(f, header=f.tell()==0)
-
-
-#####################################  FenchelYoung  #########################################
-outputfile = "FenchelYoung_rslt.csv"
-ckpt_dir =  "ckpt_dir/FenchelYoungO/"
-########## Hyperparams #########
-lr = 1e-3
-
-
-shutil.rmtree(ckpt_dir,ignore_errors=True)
-checkpoint_callback = ModelCheckpoint(
-            monitor="val_regret",
-            dirpath= ckpt_dir,
-            filename="model-{epoch:02d}-{val_loss:.2f}",
-            mode="min")
-
-trainer = pl.Trainer(max_epochs= 20,callbacks=[checkpoint_callback],  min_epochs=5)
-model = FenchelYoung(net=nn.Linear(5,1) ,lr= lr)
+model =  SemanticPO(loss_fn = NCE_c, solpool= solpool,net=nn.Linear(5,1), lr=lr, growth= growth)
 trainer.fit(model, train_dl,valid_dl)
 best_model_path = checkpoint_callback.best_model_path
 model = FenchelYoung.load_from_checkpoint(best_model_path,
@@ -311,11 +344,11 @@ net=nn.Linear(5,1), lr= lr)
 
 result = trainer.test(model, dataloaders=test_dl)
 df = pd.DataFrame(result)
-df ['model'] = 'FenchelYoung'
+df ['model'] = 'NCE'
 df ['noise'] = noise
 df ['deg'] =  deg
 df['N'] = N
-
+df['growth'] = growth
 df['lr'] = lr
 with open(outputfile, 'a') as f:
     df.to_csv(f, header=f.tell()==0)
