@@ -117,7 +117,7 @@ def generate_instance(datapoints, p=5, deg = 2, noise = 0.5):
     for i in V:
         if (i+1)%5 !=0:
             E.append((i,i+1))
-            if i+5<25:
+        if i+5<25:
                 E.append((i,i+5))
     
     c = {}

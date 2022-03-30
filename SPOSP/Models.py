@@ -21,7 +21,7 @@ E = []
 for i in V:
     if (i+1)%5 !=0:
         E.append((i,i+1))
-        if i+5<25:
+    if i+5<25:
             E.append((i,i+5))
 
 G = nx.DiGraph()
@@ -125,21 +125,23 @@ def regret_aslist(solver, y_hat,y, minimize= True):
     return np.array(regret_list)
 ###################################### Regression Model based on MSE loss #########################################
 class twostage_regression(pl.LightningModule):
-    def __init__(self,net,exact_solver = spsolver, lr=1e-1,seed=0):
+    def __init__(self,net,exact_solver = spsolver, lr=1e-1,l1_weight=0.1, seed=20):
         super().__init__()
         pl.seed_everything(seed)
         # Using seed for reproducibility
         self.net =  net
         self.lr = lr
+        self.l1_weight = l1_weight
         self.exact_solver = exact_solver
-        self.save_hyperparameters("lr")
+        self.save_hyperparameters("lr",'l1_weight')
     def forward(self,x):
         return self.net(x) 
     def training_step(self, batch, batch_idx):
         x,y = batch
         y_hat =  self(x).squeeze()
         criterion = nn.MSELoss(reduction='mean')
-        loss = criterion(y_hat,y)
+        l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
+        loss = criterion(y_hat,y)  + l1penalty * self.l1_weight
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
     def validation_step(self, batch, batch_idx):
@@ -148,19 +150,15 @@ class twostage_regression(pl.LightningModule):
         y_hat =  self(x).squeeze()
         mseloss = criterion(y_hat, y)
         regret_loss =  regret_fn(self.exact_solver, y_hat,y) 
-
         self.log("val_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("val_regret", regret_loss, prog_bar=True, on_step=True, on_epoch=True, )
-
         return {"val_mse":mseloss, "val_regret":regret_loss}
     def validation_epoch_end(self, outputs):
         avg_regret = torch.stack([x["val_regret"] for x in outputs]).mean()
         avg_mse = torch.stack([x["val_mse"] for x in outputs]).mean()
-        
         self.log("ptl/val_regret", avg_regret)
         self.log("ptl/val_mse", avg_mse)
         # self.log("ptl/val_accuracy", avg_acc)
-        
     def test_step(self, batch, batch_idx):
         # same as validation step
         return self.validation_step(batch, batch_idx)
@@ -440,7 +438,7 @@ class FenchelYoung(twostage_regression):
 
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss/len(y) 
-################################ Noise Contrative Estimation ################################
+################################ Noise Contrastive Estimation ################################
 def batch_solve(solver, y,relaxation =False):
     sol = []
     for i in range(len(y)):
