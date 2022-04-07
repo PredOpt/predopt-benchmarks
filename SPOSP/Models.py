@@ -125,7 +125,7 @@ def regret_aslist(solver, y_hat,y, minimize= True):
     return np.array(regret_list)
 ###################################### Regression Model based on MSE loss #########################################
 class twostage_regression(pl.LightningModule):
-    def __init__(self,net,exact_solver = spsolver, lr=1e-1,l1_weight=0.1, seed=20):
+    def __init__(self,net,exact_solver = spsolver, lr=1e-1, l1_weight=0.1, seed=20):
         super().__init__()
         pl.seed_everything(seed)
         # Using seed for reproducibility
@@ -133,6 +133,7 @@ class twostage_regression(pl.LightningModule):
         self.lr = lr
         self.l1_weight = l1_weight
         self.exact_solver = exact_solver
+        # self.batch_size = batch_size
         self.save_hyperparameters("lr",'l1_weight')
     def forward(self,x):
         return self.net(x) 
@@ -170,21 +171,23 @@ class twostage_regression(pl.LightningModule):
 
 
 class SPO(twostage_regression):
-    def __init__(self,net,solver= spsolver,exact_solver = spsolver,lr=1e-1):
-        super().__init__(net,exact_solver,lr)
+    def __init__(self,net,solver= spsolver,exact_solver = spsolver,lr=1e-1, l1_weight=0.1, seed=20):
+        super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.solver = solver
     def training_step(self, batch, batch_idx):
         x,y = batch
         y_hat =  self(x).squeeze()
         loss = 0
+        l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
         for ii in range(len(y)):
             loss += SPOLoss(self.solver)(y_hat[ii],y[ii])
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss/len(y)  
+        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return training_loss
 
 class Blackbox(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1,mu =0.1):
-        super().__init__(net,exact_solver,lr)
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1,mu =0.1,l1_weight=0.1, seed=20):
+        super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.mu = mu
         self.solver = solver
         self.save_hyperparameters("lr","mu")
@@ -192,11 +195,13 @@ class Blackbox(twostage_regression):
         x,y = batch
         y_hat =  self(x).squeeze()
         loss = 0
+        l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
         for ii in range(len(y)):
             loss += BlackboxLoss(self.solver,self.mu)(y_hat[ii],y[ii])
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss/len(y)    
+        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return training_loss    
 
 ###################################### This approach use it's own solver #########################################
 import cvxpy as cp
@@ -238,20 +243,23 @@ class DCOL(twostage_regression):
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1):
-        super().__init__(net,exact_solver,lr)
+    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1, seed=20):
+        super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.solver = cvxsolver()
     def training_step(self, batch, batch_idx):
         solver = self.solver
         x,y = batch
         y_hat =  self(x).squeeze()
         loss = 0
+        l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
         for ii in range(len(y)):
             sol_hat = solver.shortest_pathsolution(y_hat[ii])
             ### The loss is regret but c.dot(y) is constant so need not to be considered
             loss +=  (sol_hat ).dot(y[ii])
-        return loss/len(y)        
+        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return training_loss    
 
 
 
@@ -312,15 +320,15 @@ class QPTL(DCOL):
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1,mu=1e-1):
+    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1, seed=20,mu=0.1):
         self.solver  = qpsolver(mu=mu)
 
-        super().__init__(net,exact_solver,lr)   
+        super().__init__(net,exact_solver , lr, l1_weight, seed)   
 
 from intopt_model import IPOfunc
 
 class intoptsolver:
-    def __init__(self,G=G,thr=0.1,damping=1e-3):
+    def __init__(self,G=G,thr=0.1,damping=1e-3,):
         self.G = G
         self.thr =thr
         self.damping = damping
@@ -338,10 +346,10 @@ class IntOpt(DCOL):
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1,thr=0.1,damping=1e-3):
+    def __init__(self,net,exact_solver = spsolver,thr=0.1,damping=1e-3,lr=1e-1, l1_weight=0.1, seed=20):
         self.solver  = intoptsolver(thr=thr,damping=damping)
 
-        super().__init__(net,exact_solver,lr)  
+        super().__init__(net,exact_solver , lr, l1_weight, seed)  
 
 
 
@@ -351,8 +359,8 @@ class IntOpt(DCOL):
 
 
 class IMLE(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1):
-        super().__init__(net,exact_solver,lr)
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1, l1_weight=0.1, seed=20):
+        super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.solver = solver
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
@@ -379,26 +387,25 @@ class IMLE(twostage_regression):
 
         ########### Also the forward pass returns the solution of the perturbed cost, which is bit strange
         ###########
-
-
-
+        l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
         for ii in range(len(y)):
             sol_hat = imle_solver(-y_hat[ii].unsqueeze(0)) # Feed neagtive cost coefficient
             loss +=  (sol_hat*y[ii]).mean()
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss/len(y) 
-
+        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return training_loss
 ###################################### Differentiable Perturbed Optimizer #########################################
 
 class DPO(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1):
-        super().__init__(net,exact_solver,lr)
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1,l1_weight=0.1, seed=20):
+        super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.solver = solver
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
         x,y = batch
         y_hat =  self(x).squeeze()
         loss = 0
+        l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
         @perturbations.perturbed(num_samples=10, sigma=0.1, noise='gumbel',batched = False)
         def dpo_solver(y):
@@ -407,23 +414,25 @@ class DPO(twostage_regression):
         for ii in range(len(y)):
             sol_hat = dpo_solver(-y_hat[ii]) # Feed neagtive cost coefficient
             loss +=  ( sol_hat  ).dot(y[ii])
+        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return training_loss
 
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss/len(y) 
 
 
 
 ################################ Implementation of a Fenchel-Young loss using perturbation techniques #########################################
 
 class FenchelYoung(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1):
-        super().__init__(net,exact_solver,lr)
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1, l1_weight=0.1, seed=20):
+        super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.solver = solver
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
         x,y = batch
         y_hat =  self(x).squeeze()
         loss = 0
+        
 
         
         def fy_solver(y):
@@ -431,13 +440,14 @@ class FenchelYoung(twostage_regression):
         ############# Define the Loss functions, we can set maximization to be false
 
         criterion = fy.FenchelYoungLoss(fy_solver, num_samples=10, sigma=0.1,maximize = False, batched=False)
+        l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
         for ii in range(len(y)):
             loss +=  criterion(y_hat[ii],y[ii])
 
-
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss/len(y) 
+        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return training_loss 
 ################################ Noise Contrastive Estimation ################################
 def batch_solve(solver, y,relaxation =False):
     sol = []
