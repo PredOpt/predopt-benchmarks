@@ -15,7 +15,7 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.integration.pytorch_lightning import TuneReportCallback,  TuneReportCheckpointCallback
 from ray.tune.suggest import Repeater
 ######################################  Data Reading #########################################
-df = pd.read_csv("synthetic_path/data_N_5000_noise_0.5_deg_1.csv")
+df = pd.read_csv("synthetic_path/data_N_5000_noise_0.5_deg_2.csv")
 N, noise, deg = 100,0.5,1
 
 y = df.iloc[:,3].values
@@ -84,8 +84,8 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
     ### ***** Model Specific config *****
     config = {
             # "lr": tune.grid_search([0.5,0.1,0.05,0.01,0.005, 0.001, 0.0005,0.0001]),
-            "l1_weight":tune.grid_search([10**(k) for k in range(-5,3)]),
-            "mu":tune.grid_search([0.1]),
+            "l1_weight":tune.grid_search([10**(k) for k in range(-5,0)]),
+            "mu":tune.grid_search([10**(k) for k in range(-6,3,2)]),
 
         }
     scheduler = ASHAScheduler(
