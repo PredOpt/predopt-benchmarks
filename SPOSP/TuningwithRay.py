@@ -15,7 +15,7 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.integration.pytorch_lightning import TuneReportCallback,  TuneReportCheckpointCallback
 from ray.tune.suggest import Repeater
 ######################################  Data Reading #########################################
-df = pd.read_csv("synthetic_path/data_N_1000_noise_0.5_deg_1.csv")
+df = pd.read_csv("synthetic_path/data_N_5000_noise_0.5_deg_2.csv")
 N, noise, deg = 100,0.5,1
 
 y = df.iloc[:,3].values
