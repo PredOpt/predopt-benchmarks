@@ -359,9 +359,14 @@ class IntOpt(DCOL):
 
 
 class IMLE(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1, l1_weight=0.1, seed=20):
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,k=5,nb_iterations=100,nb_samples=1, 
+            lr=1e-1,l1_weight=0.1, seed=20):
         super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.solver = solver
+        self.k = k
+        self.nb_iterations = nb_iterations
+        self.nb_samples = nb_samples
+
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
         x,y = batch
@@ -372,13 +377,13 @@ class IMLE(twostage_regression):
         target_noise_temperature = 1.0
 
         target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
-        noise_distribution = SumOfGammaNoiseDistribution(k=5, nb_iterations=100)
+        noise_distribution = SumOfGammaNoiseDistribution(k= self.k, nb_iterations=self.nb_iterations)
 
         @imle(target_distribution=target_distribution,
                 noise_distribution=noise_distribution,
                 input_noise_temperature=input_noise_temperature,
                 target_noise_temperature=target_noise_temperature,
-                nb_samples=10)
+                nb_samples=self.nb_samples)
         def imle_solver(y):
             #     I-MLE assumes that the solver solves a maximisation problem, but here the `solver` function solves
             # a minimisation problem, so we flip the sign twice. Feed negative cost coefficient to imle_solver and then 
