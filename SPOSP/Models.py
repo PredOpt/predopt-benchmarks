@@ -122,7 +122,7 @@ def regret_aslist(solver, y_hat,y, minimize= True):
     regret_list = []
     for ii in range(len(y)):
         regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y[ii]).item() )
-    return np.array(regret_list)
+    return torch.tensor(regret_list )
 ###################################### Regression Model based on MSE loss #########################################
 class twostage_regression(pl.LightningModule):
     def __init__(self,net,exact_solver = spsolver, lr=1e-1, l1_weight=0.1, seed=20):
@@ -163,6 +163,8 @@ class twostage_regression(pl.LightningModule):
     def test_step(self, batch, batch_idx):
         # same as validation step
         return self.validation_step(batch, batch_idx)
+
+
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         return optimizer
