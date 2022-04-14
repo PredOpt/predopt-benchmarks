@@ -1,0 +1,13 @@
+torchvision==0.11.1
+matplotlib==3.2.1
+pytorch_lightning==1.4.9
+ray==1.7.1
+torch==1.10.0
+scipy==1.6.3
+numpy==1.21.5
+cvxpylayers==0.1.5
+qpth==0.0.15
+pandas==1.2.3
+gurobipy==9.5.0
+networkx==2.3
+ipython==8.2.0
