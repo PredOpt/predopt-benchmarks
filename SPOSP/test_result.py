@@ -4,12 +4,13 @@ import numpy as np
 from torch import nn
 import torch
 import pytorch_lightning as pl
-from Models import *
+from models import *
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
 import shutil
 import random
 torch.use_deterministic_algorithms(True)
+
 
 def seed_all(seed):
     print("[ Using Seed : ", seed, " ]")
@@ -22,18 +23,18 @@ def seed_all(seed):
 seed = 10 # 
 for seed in range(10):
     seed_all(seed)
-    ######################################  Data Reading #########################################
+    # Data Reading
 
     N, noise, deg = 100,0.5,1
     df = pd.read_csv("synthetic_path/data_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg))
     y = df.iloc[:,3].values
     x= df.iloc[:,4:9].values
 
-    ######### Each instance is made of 40 edges #########
+    # Each instance is made of 40 edges
     x =  x.reshape(-1,40,5).astype(np.float32)
     y = y.reshape(-1,40).astype(np.float32)
     n_samples =  len(x)
-    #######################################  Training data: 80%, validation: 5%, test: 15% #########################################
+    # Training data: 80%, validation: 5%, test: 15%
     n_training = n_samples*8//10
     n_valid = n_samples//20
     n_test = n_samples*3//20
@@ -44,9 +45,9 @@ for seed in range(10):
     x_test, y_test = x[(n_training + n_valid):], y[(n_training + n_valid):]
     print(" x test shape",y_test.shape)
 
-    train_df =  datawrapper( x_train,y_train)
-    valid_df =  datawrapper( x_valid,y_valid)
-    test_df =  datawrapper( x_test,y_test)
+    train_df =  DataWrapper(x_train, y_train)
+    valid_df =  DataWrapper(x_valid, y_valid)
+    test_df =  DataWrapper(x_test, y_test)
 
     def seed_worker(worker_id):
         worker_seed = seed #torch.initial_seed() % 2**32
@@ -59,13 +60,15 @@ for seed in range(10):
     valid_dl = DataLoader(valid_df, batch_size= 125,worker_init_fn=seed_worker,generator=g, num_workers=8)
     test_dl = DataLoader(test_df, batch_size= 125,worker_init_fn=seed_worker,generator=g, num_workers=8)
 
-    # #######################################  Two Stage #########################################
+    # Two Stage
     outputfile = "Twostage_rslt.csv"
     regretfile= "Twostage_Regret.csv"
     ckpt_dir =  "ckpt_dir/twostage/"
-    ########## Hyperparams #########
+
+    # Hyperparams
     lr, l1_weight = 0.1, 0.1
-    ############ Remove Any Previous Saved models
+
+    # Remove any previously saved models
     shutil.rmtree(ckpt_dir,ignore_errors=True)
     checkpoint_callback = ModelCheckpoint(
                 monitor="val_regret",
@@ -73,19 +76,18 @@ for seed in range(10):
                 filename="model-{epoch:02d}-{val_loss:.2f}",
                 mode="min")
 
-
     trainer = pl.Trainer(max_epochs= 3,callbacks=[checkpoint_callback],  min_epochs=5)
-    model = twostage_regression(net=nn.Linear(5,1) ,lr= lr,l1_weight=l1_weight, seed=seed)
+    model = TwoStageRegression(net=nn.Linear(5, 1), lr= lr, l1_weight=l1_weight, seed=seed)
     trainer.fit(model, train_dl,valid_dl)
     best_model_path = checkpoint_callback.best_model_path
     print("############## The selected model is:",best_model_path)
-    model = twostage_regression.load_from_checkpoint(best_model_path,
-    net=nn.Linear(5,1), lr= lr,l1_weight=l1_weight, seed=seed)
+    model = TwoStageRegression.load_from_checkpoint(best_model_path,
+                                                    net=nn.Linear(5,1), lr= lr, l1_weight=l1_weight, seed=seed)
 
     y_pred = model(torch.from_numpy(x_test).float()).squeeze()
 
     result = trainer.test(model, dataloaders=test_dl)
-    regret_list = regret_aslist(spsolver, y_pred, torch.from_numpy(y_test).float())
+    regret_list = regret_as_list(spsolver, y_pred, torch.from_numpy(y_test).float())
     df = pd.DataFrame({"regret":regret_list})
     df.index.name='instance'
     df ['model'] = 'Twostage'
@@ -111,7 +113,8 @@ for seed in range(10):
     # df['lr'] = lr
     # with open(outputfile, 'a') as f:
     #     df.to_csv(f, header=f.tell()==0)
-    ######################################  SPO #########################################
+
+    ## SPO
     # outputfile = "SPO_rslt.csv"
     # ckpt_dir =  "ckpt_dir/SPO/"
     # ########## Hyperparams #########
@@ -143,10 +146,11 @@ for seed in range(10):
     # with open(outputfile, 'a') as f:
     #     df.to_csv(f, header=f.tell()==0)
 
-# ######################################  Blackbox #########################################
+## Blackbox
 # outputfile = "Blackbox_rslt.csv"
 # ckpt_dir =  "ckpt_dir/Blackbox/"
-# ########## Hyperparams #########
+
+## Hyperparams
 # lr, mu = 0.01, 0.001
 # shutil.rmtree(ckpt_dir,ignore_errors=True)
 # checkpoint_callback = ModelCheckpoint(
@@ -174,10 +178,12 @@ for seed in range(10):
 # df['mu'] = mu
 # with open(outputfile, 'a') as f:
 #     df.to_csv(f, header=f.tell()==0)
-#####################################  Differentiable Convex Optimization Layers  #########################################
+
+## Differentiable Convex Optimization Layers
 # outputfile = "DCOL_rslt.csv"
 # ckpt_dir =  "ckpt_dir/DCOL/"
-# ########## Hyperparams #########
+
+## Hyperparams
 # lr = 0.1
 
 
@@ -208,10 +214,11 @@ for seed in range(10):
 # with open(outputfile, 'a') as f:
 #     df.to_csv(f, header=f.tell()==0)
 
-#####################################  QPTL  #########################################
+## QPTL
 # outputfile = "QPTL_rslt.csv"
 # ckpt_dir =  "ckpt_dir/QPTL/"
-# ########## Hyperparams #########
+
+## Hyperparams
 # lr,mu = 0.1,1e-1
 
 
@@ -242,10 +249,11 @@ for seed in range(10):
 # with open(outputfile, 'a') as f:
 #     df.to_csv(f, header=f.tell()==0)
 
-#####################################  IntOpt  #########################################
+##  IntOpt
 # outputfile = "Intopt_rslt.csv"
 # ckpt_dir =  "ckpt_dir/Intopt/"
-# ########## Hyperparams #########
+
+## Hyperparams
 # lr,thr,damping= 0.1,1e-1,1e-3
 
 
@@ -277,7 +285,7 @@ for seed in range(10):
 #     df.to_csv(f, header=f.tell()==0)
 
 
-#####################################  IMLE  #########################################
+## IMLE
 # outputfile = "IMLE_rslt.csv"
 # ckpt_dir =  "ckpt_dir/IMLE/"
 # ########## Hyperparams #########
@@ -312,11 +320,11 @@ for seed in range(10):
 #     df.to_csv(f, header=f.tell()==0)
 
 
-
-# #####################################  DPO  #########################################
+## DPO
 # outputfile = "DPO_rslt.csv"
 # ckpt_dir =  "ckpt_dir/DPO/"
-# ########## Hyperparams #########
+
+## Hyperparams
 # lr = 1e-3
 
 
@@ -348,10 +356,10 @@ for seed in range(10):
 #     df.to_csv(f, header=f.tell()==0)
 
 
-# #####################################  FenchelYoung  #########################################
+## FenchelYoung
 # outputfile = "FenchelYoung_rslt.csv"
 # ckpt_dir =  "ckpt_dir/FenchelYoung/"
-# ########## Hyperparams #########
+## Hyperparams
 # lr = 1e-3
 
 
@@ -383,10 +391,10 @@ for seed in range(10):
 #     df.to_csv(f, header=f.tell()==0)
 
 
-#####################################  Noise Contastive Estimation  #########################################
+## Noise Contastive Estimation
 # outputfile = "NCE_rslt.csv"
 # ckpt_dir =  "ckpt_dir/NCE/"
-# ########## Hyperparams #########
+## Hyperparams
 # lr, growth = 1e-3, 1.
 # solpool = batch_solve(spsolver, torch.from_numpy(y_train),relaxation =False)
 

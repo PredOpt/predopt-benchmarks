@@ -10,7 +10,7 @@ from solver import spsolver
 from simulate_shortest_path import generate_instance
 
 from torch.utils.data import DataLoader
-######################################  Data Reading #########################################
+# Data Reading
 if not os.path.exists('synthetic_path/data_N_100_noise_0.5_deg_1.csv'):
     generate_instance(100, noise=0.5, deg=1)
 
@@ -30,7 +30,7 @@ test_df =  Datawrapper( x_test,y_test, spsolver)
 train_dl = DataLoader(train_df, batch_size= 16)
 test_dl = DataLoader(test_df, batch_size= 2)
 
-# ######################################  Two Stage #########################################
+# Two Stage
 if __name__ == '__main__':
     trainer = pl.Trainer(max_epochs= 20,  min_epochs=4)
     model = TwoStageRegression(net=nn.Linear(5,1), exact_solver=spsolver, lr= 0.01)

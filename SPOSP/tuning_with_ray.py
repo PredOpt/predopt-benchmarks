@@ -4,7 +4,7 @@ import numpy as np
 from torch import nn
 import torch
 import pytorch_lightning as pl
-from Models import QPTL, twostage_regression, SPO,Blackbox,DCOL,IntOpt, IMLE, DPO, FenchelYoung, datawrapper
+from models import QPTL, TwoStageRegression, SPO,Blackbox,DCOL,IntOpt, IMLE, DPO, FenchelYoung, DataWrapper
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
 from torch.utils.data import DataLoader
@@ -14,18 +14,19 @@ from ray.tune import CLIReporter
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.integration.pytorch_lightning import TuneReportCallback,  TuneReportCheckpointCallback
 from ray.tune.suggest import Repeater
-######################################  Data Reading #########################################
+
+# Data Reading
 df = pd.read_csv("synthetic_path/data_N_100_noise_0.5_deg_2.csv")
 N, noise, deg = 100,0.5,1
 
 y = df.iloc[:,3].values
 x= df.iloc[:,4:9].values
 
-######### Each instance is made of 40 edges #########
+# Each instance is made of 40 edges
 x =  x.reshape(-1,40,5).astype(np.float32)
 y = y.reshape(-1,40).astype(np.float32)
 n_samples =  len(x)
-#######################################  Training data: 80%, validation: 5%, test: 15% #########################################
+# Training data: 80%, validation: 5%, test: 15%
 n_training = n_samples*8//10
 n_valid = n_samples//20
 n_test = n_samples*3//20
@@ -36,11 +37,11 @@ x_valid, y_valid = x[n_training:(n_training + n_valid)], y[n_training:(n_trainin
 x_test, y_test = x[(n_training + n_valid):], y[(n_training + n_valid):]
 print(" x test shape",y_test.shape)
 
-train_df =  datawrapper( x_train,y_train)
-valid_df =  datawrapper( x_valid,y_valid)
-test_df =  datawrapper( x_test,y_test)
+train_df =  DataWrapper(x_train, y_train)
+valid_df =  DataWrapper(x_valid, y_valid)
+test_df =  DataWrapper(x_test, y_test)
 
-################### Let's not set seed in Tuning, let it be random ###################
+## Let's not set seed in Tuning, let it be random
 # def seed_worker(worker_id):
 #     worker_seed = torch.initial_seed() % 2**32
 #     np.random.seed(worker_seed)
@@ -51,14 +52,14 @@ test_df =  datawrapper( x_test,y_test)
 # train_dl = DataLoader(train_df, batch_size= 16,worker_init_fn=seed_worker)
 # valid_dl = DataLoader(valid_df, batch_size= 5,worker_init_fn=seed_worker)
 # test_dl = DataLoader(test_df, batch_size= 50,worker_init_fn=seed_worker)
-###############################################################################################
+
 train_dl = DataLoader(train_df, batch_size= 32)
 valid_dl = DataLoader(valid_df, batch_size= 250)
 test_dl = DataLoader(test_df, batch_size= 250)
 
-###################################### Tuning  #########################################
+# Tuning
 def model_tune(config,train_dl, valid_dl, solpool=None,num_epochs=30, num_gpus=0):
-    ##### ***** Model Specific name and parameter *****
+    # Model Specific name and parameter
     model =  IMLE(net=nn.Linear(5,1) ,
     l1_weight = config['l1_weight'],
     k= config['k'],input_noise_temperature = config['input_noise_temperature'],
@@ -66,7 +67,6 @@ def model_tune(config,train_dl, valid_dl, solpool=None,num_epochs=30, num_gpus=0
     seed=random.randint(0,10))
     trainer = pl.Trainer(auto_lr_find=True)
     trainer.tune(model,train_dl, valid_dl)
-    
 
     trainer = pl.Trainer(
         max_epochs=num_epochs,
@@ -83,7 +83,7 @@ def model_tune(config,train_dl, valid_dl, solpool=None,num_epochs=30, num_gpus=0
     
 
 def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30, gpus_per_trial=0):
-    ### ***** Model Specific config *****
+    # Model Specific config
     config = {
             "l1_weight":tune.grid_search([10**(k) for k in range(-5,1,2)]),
             "k":tune.grid_search([5,10]),
@@ -98,7 +98,7 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
             reduction_factor=4)
 
     reporter = CLIReporter(
-        ### ***** Model Specific parameter *****
+        # Model Specific parameter
             parameter_columns=[ "k","input_noise_temperature","l1_weight" ],
             metric_columns=[ "training_iteration","mse", "regret"])
     analysis = tune.run(
@@ -116,7 +116,7 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
             num_samples=num_samples,
             scheduler=scheduler,
             progress_reporter=reporter,
-            ### ***** Model Specific name *****
+            # Model Specific name
             name="SP/")
     best_trial = analysis.get_best_trial("regret", "min", "last")
     print("Best trial final validation regret: {} mse: {}".format(
@@ -136,6 +136,6 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
     'training_iteration':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string() )
     # print(analysis.trial_dataframes.to_string() )
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     tune_model_asha(train_dl,valid_dl)

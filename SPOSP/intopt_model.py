@@ -6,13 +6,16 @@ from warnings import warn
 from scipy.linalg import LinAlgError
 import torch
 from torch import nn, optim
-from torch.autograd import Variable,Function
+from torch.autograd import Variable, Function
 import sys
 import logging
-import time, datetime
+import time
+import datetime
 from scipy.optimize import OptimizeWarning
 from remove_redundancy import _remove_redundancy, _remove_redundancy_sparse, _remove_redundancy_dense
 np.set_printoptions(threshold=np.inf)
+
+
 def _format_A_constraints(A, n_x, sparse_lhs=False):
     """Format the left hand side of the constraints to a 2D array
 
@@ -43,6 +46,7 @@ def _format_A_constraints(A, n_x, sparse_lhs=False):
     else:
         return np.array(A, dtype=np.float, copy=True)
 
+
 def _format_b_constraints(b):
     """Format the upper bounds of the constraints to a 1D array
 
@@ -63,6 +67,7 @@ def _format_b_constraints(b):
         return np.array([], dtype=np.float)
     b = np.array(b, dtype=np.float, copy=True).squeeze()
     return b if b.size != 1 else b.reshape((-1))
+
 
 def _clean_inputs(c, A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
                   x0=None):
@@ -246,8 +251,8 @@ def _clean_inputs(c, A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
                 "same number of elements")
         if not np.isfinite(x0).all():
             raise ValueError(
-            "Invalid input for linprog: x0 must not contain values "
-            "inf, nan, or None")
+                "Invalid input for linprog: x0 must not contain values "
+                "inf, nan, or None")
 
     # "If a sequence containing a single tuple is provided, then min and max
     # will be applied to all variables in the problem."
@@ -329,9 +334,8 @@ def _clean_inputs(c, A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
     return c, A_ub, b_ub, A_eq, b_eq, bounds, x0
 
 
-
-def _get_Abc(c,A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
-             x0=None, undo=[],c0=0):
+def _get_Abc(c, A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
+             x0=None, undo=[], c0=0):
     """
     Given a linear programming problem of the form:
     Minimize::
@@ -476,11 +480,11 @@ def _get_Abc(c,A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
     #A_ub[range(m_ub, A_ub.shape[0]), i_newub] = 1
     #b_ub[m_ub:] = ub_newub
 
-    A_ub = vstack(( zeros((n_bounds, A_ub.shape[1])),A_ub))
-    b_ub = np.concatenate((np.zeros(n_bounds),b_ub))
+    A_ub = vstack((zeros((n_bounds, A_ub.shape[1])), A_ub))
+    b_ub = np.concatenate((np.zeros(n_bounds), b_ub))
     A_ub[range(0, n_bounds), i_newub] = 1
     b_ub[:n_bounds] = ub_newub
-    
+
     A1 = vstack((A_ub, A_eq))
     b = np.concatenate((b_ub, b_eq))
     c = np.concatenate((c, np.zeros((A_ub.shape[0],))))
@@ -520,7 +524,8 @@ def _get_Abc(c,A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
     if x0 is not None:
         x0[i_shift] -= lb_shift
 
-    return A, b, c, c0, x0    
+    return A, b, c, c0, x0
+
 
 def postsolve(x, n_x, complete=False, tol=1e-8, copy=False):
     """
@@ -625,7 +630,7 @@ def postsolve(x, n_x, complete=False, tol=1e-8, copy=False):
                 else:
                     x[i] += lb
     x = x[:n_x]  # all the rest of the variables were artificial
-    #comment out rest
+    # comment out rest
     '''
     fun = x.dot(c)
     slack = b_ub - A_ub.dot(x)  # report slack for ORIGINAL UB constraints
@@ -644,12 +649,13 @@ def postsolve(x, n_x, complete=False, tol=1e-8, copy=False):
     '''
     return x
 
+
 def _initialization(shape, init_val=None):
     if init_val is None:
         m_eq, n = shape
-        x0 = np.ones(n,dtype = np.float)
-        y0 = np.zeros(m_eq,dtype = np.float)
-        t0 = np.ones(n,dtype = np.float)
+        x0 = np.ones(n, dtype=np.float)
+        y0 = np.zeros(m_eq, dtype=np.float)
+        t0 = np.ones(n, dtype=np.float)
         tau0 = np.array([1], dtype=np.float)
         kappa0 = np.array([1], dtype=np.float)
     else:
@@ -657,18 +663,18 @@ def _initialization(shape, init_val=None):
         y0 = init_val['y']
         t0 = init_val['t']
         tau0 = init_val['tau']
-        kappa0 = init_val['kappa']        
-    return x0,y0,t0,tau0,kappa0
+        kappa0 = init_val['kappa']
+    return x0, y0, t0, tau0, kappa0
+
 
 def _sym_solve(Dinv, A, r1, r2, solve):
-    
+
     # [4] 8.31
     r = r2 + A.dot(Dinv * r1)
 
-    #print(r)
-    #print(solve)
-    v =  solve(r)
-
+    # print(r)
+    # print(solve)
+    v = solve(r)
 
     # try:
     # 	v = solve(r)
@@ -677,11 +683,11 @@ def _sym_solve(Dinv, A, r1, r2, solve):
     # [4] 8.32
     u = Dinv * (A.T.dot(v) - r1)
 
-
     return u, v
 
+
 def _get_solver(M, sparse=False, lstsq=False, sym_pos=True,
-                cholesky=True, assume_a= 'sym',permc_spec='MMD_AT_PLUS_A'):
+                cholesky=True, assume_a='sym', permc_spec='MMD_AT_PLUS_A'):
     """
     Given solver options, return a handle to the appropriate linear system
     solver.
@@ -746,8 +752,8 @@ def _get_solver(M, sparse=False, lstsq=False, sym_pos=True,
             else:
                 # this seems to cache the matrix factorization, so solving
                 # with multiple right hand sides is much faster
-                def solve(r, sym_pos=sym_pos,assume_a=assume_a):
-                    return sp.linalg.solve(M, r,assume_a=assume_a)
+                def solve(r, sym_pos=sym_pos, assume_a=assume_a):
+                    return sp.linalg.solve(M, r, assume_a=assume_a)
     # There are many things that can go wrong here, and it's hard to say
     # what all of them are. It doesn't really matter: if the matrix can't be
     # factorized, return None. get_solver will be called again with different
@@ -755,94 +761,110 @@ def _get_solver(M, sparse=False, lstsq=False, sym_pos=True,
     except KeyboardInterrupt:
         raise
     except Exception:
-    	return None
+        return None
     return solve
 
-def _get_delta(A,b,c,x,y,t,tau,kappa,gamma,eta,pc=True,damping=1e-3):
+
+def _get_delta(
+    A,
+    b,
+    c,
+    x,
+    y,
+    t,
+    tau,
+    kappa,
+    gamma,
+    eta,
+    pc=True,
+        damping=1e-3):
     n = len(x)
     # print("input TAU",tau)
     # print(" input X",x)
-    r1 = -(A.dot(x) - b*tau) #r_p
-    r2 = -(A.T.dot(y) + t - c*tau) #r_d
-    r3 = -(-c.dot(x)+b.dot(y)-kappa) #r_g
+    r1 = -(A.dot(x) - b * tau)  # r_p
+    r2 = -(A.T.dot(y) + t - c * tau)  # r_d
+    r3 = -(-c.dot(x) + b.dot(y) - kappa)  # r_g
 
+    mu = (x.dot(t) + tau * kappa) / (n + 1)
 
-    mu = (x.dot(t)+tau*kappa)/(n+1)
-  
-    Dinv = (x/t) 
-    M = A.dot(Dinv.reshape(-1,1)*A.T)
+    Dinv = (x / t)
+    M = A.dot(Dinv.reshape(-1, 1) * A.T)
     damping_param = damping
     np.fill_diagonal(M, M.diagonal() + damping_param)
 
-    solve = _get_solver(M)  
+    solve = _get_solver(M)
     lstsq = False
     # if solve is None:
     #     print(Dinv)
     #     print(A.shape)
-    i =0
-    while i <2:  
+    i = 0
+    while i < 2:
 
-        rhat1 = eta(gamma)*r1
-        rhat2 = eta(gamma)*r2
-        rhat3 = eta(gamma)*r3
-        rhatxt = -(x*t - gamma*mu) 
-        rhattk = -(tau*kappa - gamma*mu)
-        #alpha,
-        #Mehrotra
-        if i==1:
-            rhatxt -=  d_x * d_t
+        rhat1 = eta(gamma) * r1
+        rhat2 = eta(gamma) * r2
+        rhat3 = eta(gamma) * r3
+        rhatxt = -(x * t - gamma * mu)
+        rhattk = -(tau * kappa - gamma * mu)
+        # alpha,
+        # Mehrotra
+        if i == 1:
+            rhatxt -= d_x * d_t
             #rhatzs -= - d_z * d_s
-            rhattk -=  d_tau*d_kappa
+            rhattk -= d_tau * d_kappa
         attempt_count = 0
         solved = False
-        while (not solved and attempt_count<3):
-                try:
-                    p,q = _sym_solve(Dinv,A,c,b,solve)
-                    u,v = _sym_solve(Dinv,A,rhat2 -(1/x)*rhatxt,rhat1,solve)
+        while (not solved and attempt_count < 3):
+            try:
+                p, q = _sym_solve(Dinv, A, c, b, solve)
+                u, v = _sym_solve(Dinv, A, rhat2 - (1 / x)
+                                  * rhatxt, rhat1, solve)
 
-                    
-                    #print(M)
-                    if np.any(np.isnan(p)) or np.any(np.isnan(q)):
-                    	raise (LinAlgError)
-                    solved = True
-                    logging.info("Success in finding delta ----- solving attempt %d "%(attempt_count))
-                except (ValueError, TypeError,LinAlgError) as e:
-                    logging.info("Cholesky failed trying other method ----- solving attempt %d error message %s"%(attempt_count,e))
-                    
-                    attempt_count +=1
-                    # if not lstsq:
-                    #     sym_pos = False
-                    #     sparse= True
-                    # else:
-                    #     sym_pos = True
-                    #     sparse =  True
-                    assume_a_dict = {2:'pos',3:'gen',1:'sym'}
-                    assume_a = assume_a_dict[attempt_count]
-                    solve = _get_solver(M, cholesky = False,
-                        assume_a =assume_a)
+                # print(M)
+                if np.any(np.isnan(p)) or np.any(np.isnan(q)):
+                    raise (LinAlgError)
+                solved = True
+                logging.info(
+                    "Success in finding delta ----- solving attempt %d " %
+                    (attempt_count))
+            except (ValueError, TypeError, LinAlgError) as e:
+                logging.info(
+                    "Cholesky failed trying other method ----- solving attempt %d error message %s" %
+                    (attempt_count, e))
 
-                    #print("Solving attempt: ",attempt_count)
-                    
-                    #if attempt_count ==3:
-                        #print(e)
-                        #print("Warning:: Not able to find delta matrix")
-                        #logging.info("M is %s"%(M))
+                attempt_count += 1
+                # if not lstsq:
+                #     sym_pos = False
+                #     sparse= True
+                # else:
+                #     sym_pos = True
+                #     sparse =  True
+                assume_a_dict = {2: 'pos', 3: 'gen', 1: 'sym'}
+                assume_a = assume_a_dict[attempt_count]
+                solve = _get_solver(M, cholesky=False,
+                                    assume_a=assume_a)
+
+                #print("Solving attempt: ",attempt_count)
+
+                # if attempt_count ==3:
+                # print(e)
+                #print("Warning:: Not able to find delta matrix")
+                #logging.info("M is %s"%(M))
 
         if solved:
             ####################
             # print("Numerator ",
             #     ((rhat3 + 1 / tau * rhattk - (-c.dot(u) + b.dot(v))) ))
             # print("denomintor ",
-            #     (1 / tau * kappa + (-c.dot(p) + b.dot(q))))                     
+            #     (1 / tau * kappa + (-c.dot(p) + b.dot(q))))
             d_tau = ((rhat3 + 1 / tau * rhattk - (-c.dot(u) + b.dot(v))) /
                      (1 / tau * kappa + (-c.dot(p) + b.dot(q))))
             d_x = u + p * d_tau
             d_y = v + q * d_tau
-            d_t = (1/x)*(rhatxt - t*d_x)
-            d_kappa = (rhattk - kappa * d_tau)/tau
+            d_t = (1 / x) * (rhatxt - t * d_x)
+            d_kappa = (rhattk - kappa * d_tau) / tau
             alpha = _get_step(x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, 1)
-            gamma =  (1- alpha)**2 *min(0.1,(1-alpha))
-            i +=1
+            gamma = (1 - alpha)**2 * min(0.1, (1 - alpha))
+            i += 1
             if pc is not True:
                 break
             # print ("grads")
@@ -851,21 +873,22 @@ def _get_delta(A,b,c,x,y,t,tau,kappa,gamma,eta,pc=True,damping=1e-3):
             # print("d_t",d_t)
             # print("d_tau",d_tau)
 
-
         else:
-            d_x,d_y,d_t,d_tau,d_kappa = 0. ,0.,0.,0.,0.
+            d_x, d_y, d_t, d_tau, d_kappa = 0., 0., 0., 0., 0.
             break
-        
-    return d_x,d_y,d_t,d_tau,d_kappa,solved
 
-def _do_step(x, y, t, tau, kappa,  d_x,d_y,d_t, d_tau, d_kappa, alpha):
-    
+    return d_x, d_y, d_t, d_tau, d_kappa, solved
+
+
+def _do_step(x, y, t, tau, kappa, d_x, d_y, d_t, d_tau, d_kappa, alpha):
+
     x = x + alpha * d_x
     tau = tau + alpha * d_tau
     t = t + alpha * d_t
     kappa = kappa + alpha * d_kappa
     y = y + alpha * d_y
     return x, y, t, tau, kappa
+
 
 def _get_step(x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, alpha0):
     i_x = d_x < 0
@@ -877,11 +900,11 @@ def _get_step(x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, alpha0):
     alpha = np.min([1, alpha_x, float(alpha_tau), alpha_t, float(alpha_kappa)])
     return alpha
 
-def _indicators(A, b, c,  x, y, t, tau, kappa):
-   
+
+def _indicators(A, b, c, x, y, t, tau, kappa):
 
     # residuals for termination are relative to initial values
-    x0,y0,t0,tau0,kappa0 = _initialization(A.shape)
+    x0, y0, t0, tau0, kappa0 = _initialization(A.shape)
 
     # See [4], Section 4 - The Homogeneous Algorithm, Equation 8.8
     def r_p(x, tau):
@@ -897,11 +920,10 @@ def _indicators(A, b, c,  x, y, t, tau, kappa):
     def mu(x, tau, t, kappa):
         return (x.dot(t) + np.dot(tau, kappa)) / (len(x) + 1)
 
-    obj = c.dot(x / tau) 
+    obj = c.dot(x / tau)
 
     def norm(a):
         return np.linalg.norm(a)
-
 
     # See [4], Section 4.5 - The Stopping Criteria
     r_p0 = r_p(x0, tau0)
@@ -913,10 +935,12 @@ def _indicators(A, b, c,  x, y, t, tau, kappa):
     rho_d = norm(r_d(y, t, tau)) / max(1, norm(r_d0))
     rho_g = norm(r_g(x, y, kappa)) / max(1, norm(r_g0))
     rho_mu = mu(x, tau, t, kappa) / mu_0
-    current_mu = mu(x, tau, t, kappa) 
-    return rho_p, rho_d, rho_A, rho_g, rho_mu, current_mu,obj
+    current_mu = mu(x, tau, t, kappa)
+    return rho_p, rho_d, rho_A, rho_g, rho_mu, current_mu, obj
+
+
 def _presolve(c, A_ub, b_ub, A_eq, b_eq, bounds, x0, rr, tol=1e-9):
-    
+
     undo = []               # record of variables eliminated from problem
     # constant term in cost function may be added if variables are eliminated
     c0 = 0
@@ -1159,7 +1183,9 @@ def _presolve(c, A_ub, b_ub, A_eq, b_eq, bounds, x0, rr, tol=1e-9):
                 bounds[i][j] = None
     return (c, c0, A_ub, b_ub, A_eq, b_eq, bounds,
             x, x0, undo, complete, status, message)
-def _remove_redundant_rows (A_eq):
+
+
+def _remove_redundant_rows(A_eq):
     # remove redundant (linearly dependent) rows from equality constraints
     n_rows_A = A_eq.shape[0]
     redundancy_warning = ("A_eq does not appear to be of full row rank. To "
@@ -1178,20 +1204,20 @@ def _remove_redundant_rows (A_eq):
     # This is a wild guess for which redundancy removal algorithm will be
     # faster. More testing would be good.
     small_nullspace = 5
-    if  A_eq.size > 0:
+    if A_eq.size > 0:
         try:  # TODO: instead use results of first SVD in _remove_redundancy
             rank = np.linalg.matrix_rank(A_eq)
         except Exception:  # oh well, we'll have to go with _remove_redundancy_dense
             rank = 0
     if A_eq.size > 0 and rank < A_eq.shape[0]:
         warn(redundancy_warning, OptimizeWarning, stacklevel=3)
-        dim_row_nullspace = A_eq.shape[0]-rank
+        dim_row_nullspace = A_eq.shape[0] - rank
         if dim_row_nullspace <= small_nullspace:
             print("1")
-            d_removed,  status, message = _remove_redundancy(A_eq)
-        if dim_row_nullspace > small_nullspace :
+            d_removed, status, message = _remove_redundancy(A_eq)
+        if dim_row_nullspace > small_nullspace:
             print("2")
-            d_removed,  status, message = _remove_redundancy_dense(A_eq)
+            d_removed, status, message = _remove_redundancy_dense(A_eq)
         if A_eq.shape[0] < rank:
             message = ("Due to numerical issues, redundant equality "
                        "constraints could not be removed automatically. "
@@ -1204,9 +1230,12 @@ def _remove_redundant_rows (A_eq):
             complete = True
     return d_removed
 
+
 def _preprocess(c, A=None, b=None, G=None, h=None, bounds=None):
-    
-    assert (A is not None or G is not None) and (b is not None or h is not None)
+
+    assert (
+        A is not None or G is not None) and (
+        b is not None or h is not None)
 
     if A is not None:
         n_eq = A.shape[0]
@@ -1215,10 +1244,10 @@ def _preprocess(c, A=None, b=None, G=None, h=None, bounds=None):
     if G is not None:
         n_ub = G.shape[0]
     else:
-        n_ub =0
-    
-    c, A_ub, b_ub, A_eq, b_eq, bounds, x0 = _clean_inputs(c=c, A_ub=G, b_ub =h,A_eq=A,b_eq=b,
-     bounds = bounds)
+        n_ub = 0
+
+    c, A_ub, b_ub, A_eq, b_eq, bounds, x0 = _clean_inputs(
+        c=c, A_ub=G, b_ub=h, A_eq=A, b_eq=b, bounds=bounds)
     n_x = len(c)
     # ### presolve
     # c0 = 0
@@ -1235,16 +1264,15 @@ def _preprocess(c, A=None, b=None, G=None, h=None, bounds=None):
     #                                b_eq, bounds, x0, undo)
     #     if c0 != 0:
     #         print("c0 is not zero ",c0)
-    return c, A_ub, b_ub, A_eq, b_eq, bounds, x0,n_x,n_eq,n_ub
+    return c, A_ub, b_ub, A_eq, b_eq, bounds, x0, n_x, n_eq, n_ub
 
 
-def _postprocess(x, postsolve_args,complete):
-    ### BIG BUGS
+def _postprocess(x, postsolve_args, complete):
+    # BIG BUGS
     #print("n_x %d n_ub %d n_eq %d "%(n_x,n_ub,n_eq))
-    c, A_ub, b_ub, A_eq, b_eq, bounds, undo = postsolve_args 
+    c, A_ub, b_ub, A_eq, b_eq, bounds, undo = postsolve_args
     n_x = len(c)
     no_adjust = set()
-
 
     # if there were variables removed from the problem, add them back into the
     # solution vector
@@ -1253,7 +1281,7 @@ def _postprocess(x, postsolve_args,complete):
         x = x.tolist()
         for i, val in zip(undo[0], undo[1]):
             x.insert(i, val)
-        
+
         x = np.array(x, copy=True)
 
     # now undo variable substitutions
@@ -1278,87 +1306,126 @@ def _postprocess(x, postsolve_args,complete):
         # # A_eq = A[n_ub:,:]
         # b = b[-(n_ub+n_eq):]
         # # b_ub = b[:n_ub]
-        # # b_eq = b[n_ub:]        
+        # # b_eq = b[n_ub:]
         # c = c[:n_x]
         x = x[:n_x]
-        
+
     return x   # x,y,c_v,A_v, b_v, x_v, t_v
 
-def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
-    tol= 1e-8,max_iter=1000,init_val= None,method =1,mu0=None,
-    smoothing=False,bounds= None,thr=None,new_grad=True,presolve= True, A_eq_rr = True,
-    damping= 1e-2):
+
+def IPOfunc(
+    A=None,
+    b=None,
+    G=None,
+    h=None,
+    alpha0=0.9995,
+    beta=0.1,
+    pc=True,
+    tol=1e-8,
+    max_iter=1000,
+    init_val=None,
+    method=1,
+    mu0=None,
+    smoothing=False,
+    bounds=None,
+    thr=None,
+    new_grad=True,
+    presolve=True,
+    A_eq_rr=True,
+        damping=1e-2):
     run_time = 0.
     problem_solved = True
     # if no solution under timelimit or max-iter don't do gradient update
-    class IPOfunc_cls(Function):        
+
+    class IPOfunc_cls(Function):
         @staticmethod
-        def forward(ctx,c):
+        def forward(ctx, c):
             nonlocal run_time
             start = time.time()
-            c_=c.detach().numpy()
+            c_ = c.detach().numpy()
             if b is not None:
-                b_=b.detach().numpy()
-                if b_.shape[0] ==0:
+                b_ = b.detach().numpy()
+                if b_.shape[0] == 0:
                     b_ = None
             if A is not None:
                 A_ = A.detach().numpy()
-                if A_.shape[0] ==0:
+                if A_.shape[0] == 0:
                     A_ = None
 
             if h is not None:
                 h_ = h.detach().numpy()
-                if h_.shape[0] ==0:
+                if h_.shape[0] == 0:
                     h_ = None
             if G is not None:
                 G_ = G.detach().numpy()
-                if G_.shape[0] ==0:
+                if G_.shape[0] == 0:
                     G_ = None
             n = len(c_)
-            bounds_ = bounds if bounds is not None else [(0, None) for i in range(n)]
+            bounds_ = bounds if bounds is not None else [
+                (0, None) for i in range(n)]
             thr_ = thr if thr is not None else 0.
             max_iter_ = max_iter if max_iter is not None else 1000
             # presolve_= presolve
             # A_eq_rr_ = A_eq_rr
             try:
-                c_, G_, h_,A_, b_,bounds_, x0,n_x,n_eq,n_ub = _preprocess(c_, A_, b_, G_, 
-                    h_,bounds_ )
+                c_, G_, h_, A_, b_, bounds_, x0, n_x, n_eq, n_ub = _preprocess(
+                    c_, A_, b_, G_, h_, bounds_)
                 # print("After pre process shape of c {} of A{} b{} h{} G{}".format(c_.shape,
                 #     A_.shape,b_.shape,h_.shape,G_.shape))
                 c_o, A_o, b_o, G_o, h_o = c_.copy(), A_.copy(
-                    ), b_.copy(), G_.copy(), h_.copy()
+                ), b_.copy(), G_.copy(), h_.copy()
                 # logging.info("Shape of A_eq {} A_ineq {} at the beginning".format(A_.shape,G_.shape))
 
             except ValueError:
-                
+
                 # c contains  inf, nan, or None
                 logging.info("####### Alert #########")
                 logging.info("matrix contains inf, nan, or None")
-                logging.info("C containes nan ? {} Infinity? {} ".format(np.isnan(c_).any(),
-                np.isinf(c_).any()))
-                logging.info("smoothing {} thr {}".format(smoothing,thr))
+                logging.info(
+                    "C containes nan ? {} Infinity? {} ".format(
+                        np.isnan(c_).any(), np.isinf(c_).any()))
+                logging.info("smoothing {} thr {}".format(smoothing, thr))
                 logging.info("####### #########")
                 raise (LinAlgError)
                 # c_ = np.nan_to_num(c_)
                 # c_, G_, h_,A_, b_,bounds_, x0,n_x,n_eq,n_ub = _preprocess(c_, A_, b_, G_, h_,bounds_)
-            ### presolve
-            
+            # presolve
+
             c0 = 0
             iteration = 0
             complete = False    # will become True if solved in presolve
             undo = []
-            ### presolve
+            # presolve
             # print("Preprocess done{:%Y-%m-%d %H:%M:%S}".format(datetime.datetime.now()))
 
             if presolve:
                 # rows_to_be_removed = _remove_redundant_rows(A_)
                 # A_ = np.delete(A_, rows_to_be_removed, axis=0)
                 # b_ = np.delete(b_, rows_to_be_removed)
-                (c_, c0, G_, h_, A_, b_, bounds_, x, x0, undo, complete, status,
-                    message) = _presolve(c_, G_, h_,A_, b_,bounds_, x0, rr= A_eq_rr, tol=1e-9)
+                (c_,
+                 c0,
+                 G_,
+                 h_,
+                 A_,
+                 b_,
+                 bounds_,
+                 x,
+                 x0,
+                 undo,
+                 complete,
+                 status,
+                 message) = _presolve(c_,
+                                      G_,
+                                      h_,
+                                      A_,
+                                      b_,
+                                      bounds_,
+                                      x0,
+                                      rr=A_eq_rr,
+                                      tol=1e-9)
                 # logging.info("After pre solve shape of c {} of A{} b{} h{} G{}".format(c_.shape,
                 #     A_.shape,b_.shape,h_.shape,G_.shape))
-            if len(undo)>0:
+            if len(undo) > 0:
                 ctx.fixed_var = undo[0]
             else:
                 ctx.fixed_var = []
@@ -1368,48 +1435,55 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
             n_x_afterpre = len(c_)
 
             all_index = set([i for i in range(n_x)])
-            ctx.var_index= list(all_index.difference(ctx.fixed_var))
+            ctx.var_index = list(all_index.difference(ctx.fixed_var))
             ctx.n_x = n_x
             ctx.n_eq = n_eq
             ctx.n_ub = n_ub
-            
-            postsolve_args = (c_o,  A_o, b_o, G_o, h_o, bounds, undo)
+
+            postsolve_args = (c_o, A_o, b_o, G_o, h_o, bounds, undo)
 
             if not complete:
                 # logging.info("Shape of A_eq {} A_ineq {} before getabc".format(A_.shape,G_.shape))
-                A_, b_, c_, c0, x0 = _get_Abc(c_, G_, h_,A_, b_,bounds_, x0, undo,c0)
+                A_, b_, c_, c0, x0 = _get_Abc(
+                    c_, G_, h_, A_, b_, bounds_, x0, undo, c0)
                 # logging.info("Shape of A after getabc {}".format(A_.shape))
                 if c0 != 0:
                     logging.info("c0 is not zero! {} ".format(c0))
-               
-                x,y,t,tau,kappa = _initialization(A_.shape,init_val)
+
+                x, y, t, tau, kappa = _initialization(A_.shape, init_val)
                 go = True
-                iter_count = 0 
+                iter_count = 0
                 # print("Go loop to start{:%Y-%m-%d %H:%M:%S}".format(datetime.datetime.now()))
                 while go:
-                    iter_count+=1
+                    iter_count += 1
                     # print("iteration -",iter_count)
                     gamma = 0 if pc else beta * np.mean(t * x)
+
                     def eta(g=gamma):
                         return 1 - g
-                    d_x,d_y,d_t, d_tau, d_kappa,solved = _get_delta(A_,b_,c_,x,y,t,tau,kappa,gamma,
-                        eta,pc= pc,damping=damping)
-                
+                    d_x, d_y, d_t, d_tau, d_kappa, solved = _get_delta(
+                        A_, b_, c_, x, y, t, tau, kappa, gamma, eta, pc=pc, damping=damping)
+
                     #logging.info("d_x %s  ,d_tau  %s, d_kappa %s"%(d_x,d_tau, d_kappa))
-                    #print(solved)
-                    #if not solved:
+                    # print(solved)
+                    # if not solved:
                     #    logging.info(" G %s, h %s, c %s" %(G,h,c))
 
-                    alpha = _get_step(x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, alpha0)
-                    x,y,t,tau,kappa = _do_step(x, y, t, tau, kappa,  d_x,d_y,d_t, d_tau, d_kappa, alpha)
+                    alpha = _get_step(
+                        x, d_x, t, d_t, tau, d_tau, kappa, d_kappa, alpha0)
+                    x, y, t, tau, kappa = _do_step(
+                        x, y, t, tau, kappa, d_x, d_y, d_t, d_tau, d_kappa, alpha)
 
-                    rho_p, rho_d, rho_A, rho_g, rho_mu,mu, obj = _indicators(
-                        A_, b_, c_,  x, y, t, tau, kappa)
+                    rho_p, rho_d, rho_A, rho_g, rho_mu, mu, obj = _indicators(
+                        A_, b_, c_, x, y, t, tau, kappa)
 
-                    go = (rho_p > tol or rho_d > tol or rho_A > tol) and  (mu> thr_)
-                    inf1 = (rho_p < tol and rho_d < tol and rho_g < tol and tau < tol *max(1, kappa))
+                    go = (
+                        rho_p > tol or rho_d > tol or rho_A > tol) and (
+                        mu > thr_)
+                    inf1 = (rho_p < tol and rho_d < tol and rho_g <
+                            tol and tau < tol * max(1, kappa))
                     inf2 = rho_mu < tol and tau < tol * min(1, kappa)
-                    #print("alpha",alpha,"rhop",rho_p,"rhod",rho_d,"rhoA",rho_A,"rhog",rho_g,"rho_mu",rho_mu,"tau",tau)
+                    # print("alpha",alpha,"rhop",rho_p,"rhod",rho_d,"rhoA",rho_A,"rhog",rho_g,"rho_mu",rho_mu,"tau",tau)
                     if inf1 or inf2:
                         break
                     if (max_iter_ < iter_count):
@@ -1422,65 +1496,70 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
                         logging.info("not able to find solutions")
                         problem_solved = False
                         break
-                    #print(np.sum(x_hat))
-                    #print(c.dot(x_hat))
-                    ### experimnets with dividing by tau
+                    # print(np.sum(x_hat))
+                    # print(c.dot(x_hat))
+                    # experimnets with dividing by tau
                     #x = x/tau
                     #y = y/tau
                     #t = t/tau
                     #tau = 1
-                save_for_initialization ={"x":x,"y":y,"t":t,"tau":tau,"kappa":kappa}
-                logging.info("stopping mu value %s and threshold value is %s stopping tau %s and stopping kappa %s after iter count %d" %(mu,
-                    thr_,tau,kappa, iter_count))
+                save_for_initialization = {
+                    "x": x, "y": y, "t": t, "tau": tau, "kappa": kappa}
+                logging.info(
+                    "stopping mu value %s and threshold value is %s stopping tau %s and stopping kappa %s after iter count %d" %
+                    (mu, thr_, tau, kappa, iter_count))
                 # if kappa>1e-3:
                 #     logging.info("kappa >0 ; c.x {}, b.y {}".format(c_.dot(x),
                 #         b_.dot(y)))
 
                 # logging.info("calculated mu {:.2f}".format((x.dot(t) + np.dot(tau, kappa)) / (len(x) + 1)))
 
-                
-                x_hat = x/tau
-                t_hat = t/tau
-                y_hat = y/tau
+                x_hat = x / tau
+                t_hat = t / tau
+                y_hat = y / tau
                 # logging.info("calculated mu {:.2f}".format((x_hat.dot(t_hat) ) / (len(x) + 1)))
                 x_v = torch.from_numpy(x).float()
                 y_v = torch.from_numpy(y).float()
-                t_v = torch.from_numpy(t).float()                
+                t_v = torch.from_numpy(t).float()
                 #print("y full",y_hat)
                 # two choices
-                # solve inequality problem or solve the problem with equality in backward 
+                # solve inequality problem or solve the problem with equality
+                # in backward
 
                 # x_sol,y_v, x_v,t_v = _postprocess(x_hat,y_hat,t_hat,
                 #     n_x,n_eq,n_ub,bounds_ ,undo,complete)
-                x_sol  = _postprocess(x_hat, postsolve_args,complete)
+                x_sol = _postprocess(x_hat, postsolve_args, complete)
                 x_sol = torch.from_numpy(x_sol).float()
-                
 
                 c_v = torch.from_numpy(c_).float()
                 A_v = torch.from_numpy(A_).float()
                 b_v = torch.from_numpy(b_).float()
-                if method==1: # full
+                if method == 1:  # full
 
-                    ctx.save_for_backward(x_v,y_v,t_v,
-                        torch.tensor(tau,dtype=torch.float),
-                        torch.tensor(kappa,dtype=torch.float),
-                        c_v, A_v, b_v)
-                if method==2: #both row & columns
+                    ctx.save_for_backward(
+                        x_v, y_v, t_v, torch.tensor(
+                            tau, dtype=torch.float), torch.tensor(
+                            kappa, dtype=torch.float), c_v, A_v, b_v)
+                if method == 2:  # both row & columns
                     ctx.save_for_backward(x_v[:n_x_afterpre],
-                        y_v[-(n_ub_afterpre + n_eq_afterpre):],t_v[:n_x_afterpre],
-                        torch.tensor(tau,dtype=torch.float),
-                        torch.tensor(kappa,dtype=torch.float),
-                        c_v[:n_x_afterpre],
-                        A_v[-(n_ub_afterpre + n_eq_afterpre):,:n_x_afterpre],
-                        b_v[-(n_ub_afterpre + n_eq_afterpre):])
-                if method==3: #only rows
+                                          y_v[-(n_ub_afterpre + n_eq_afterpre):],
+                                          t_v[:n_x_afterpre],
+                                          torch.tensor(tau,
+                                                       dtype=torch.float),
+                                          torch.tensor(kappa,
+                                                       dtype=torch.float),
+                                          c_v[:n_x_afterpre],
+                                          A_v[-(n_ub_afterpre + n_eq_afterpre):,
+                                              :n_x_afterpre],
+                                          b_v[-(n_ub_afterpre + n_eq_afterpre):])
+                if method == 3:  # only rows
                     ctx.save_for_backward(x_v,
-                        y_v[-(n_ub_afterpre + n_eq_afterpre):],t_v,
-                        torch.tensor(tau,dtype=torch.float),
-                        torch.tensor(kappa,dtype=torch.float),
-                        c_v,
-                        A_v[-(n_ub_afterpre + n_eq_afterpre):,:],
-                        b_v[-(n_ub_afterpre + n_eq_afterpre):])                
+                                          y_v[-(n_ub_afterpre + n_eq_afterpre):], t_v,
+                                          torch.tensor(tau, dtype=torch.float),
+                                          torch.tensor(kappa, dtype=torch.float),
+                                          c_v,
+                                          A_v[-(n_ub_afterpre + n_eq_afterpre):, :],
+                                          b_v[-(n_ub_afterpre + n_eq_afterpre):])
             else:
                 x_sol = torch.from_numpy(x).float()
                 t_sol = torch.ones(n_x)
@@ -1488,23 +1567,22 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
                 z_sol = torch.zeros(n_ub)
                 print("alert solved in presolve not sure about dual vaialbles")
 
-        
             # c = torch.from_numpy(c).float()
             # A = torch.from_numpy(A).float()
             # b = torch.from_numpy(b).float()
             # G = torch.from_numpy(G).float()
             # h = torch.from_numpy(h).float()
 
-
             end = time.time()
-            run_time += end -start
+            run_time += end - start
             return x_sol
+
         @staticmethod
-        def backward(ctx,del_x):
+        def backward(ctx, del_x):
             nonlocal run_time
             start = time.time()
 
-            x,y,t,tau,kappa,c,A,b =  ctx.saved_tensors
+            x, y, t, tau, kappa, c, A, b = ctx.saved_tensors
             # logging.info("shape of x {} y {} t {} c {} A {} b {}".format(x.shape,
             #     y.shape,t.shape,c.shape,A.shape,b.shape))
             laplace_smoothing = damping
@@ -1512,83 +1590,90 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
             # dh = torch.zeros_like(h,dtype = torch.float)
             # dA =  torch.zeros_like(A,dtype = torch.float)
             # dG = torch.zeros_like(G,dtype = torch.float)
-        
-            n  = len(x)
-            
-            mu = (x.dot(t) + tau*kappa) / (n + 1)
+
+            n = len(x)
+
+            mu = (x.dot(t) + tau * kappa) / (n + 1)
             del_x = del_x[ctx.var_index]
-            assert len(del_x)== (ctx.n_x - len(ctx.fixed_var))
+            assert len(del_x) == (ctx.n_x - len(ctx.fixed_var))
             n_var = len(del_x)
             #assert n_var == n
-            
-            logging.info("Value of mu: {:f} and n {}".format(mu.item(),n))
 
-            x2= x**2
-            a = A*x
-            M = torch.matmul(a,a.T)
+            logging.info("Value of mu: {:f} and n {}".format(mu.item(), n))
 
-            r1 = tau*A*x2
-            r2 =  mu *b + torch.mv(A,x2*c)
+            x2 = x**2
+            a = A * x
+            M = torch.matmul(a, a.T)
+
+            r1 = tau * A * x2
+            r2 = mu * b + torch.mv(A, x2 * c)
             try:
                 M_numpy = M.detach().numpy()
-                # rank = np.linalg.matrix_rank(M_numpy,tol=1e-5) 
+                # rank = np.linalg.matrix_rank(M_numpy,tol=1e-5)
 
-                np.fill_diagonal(M_numpy, M_numpy.diagonal() + laplace_smoothing)
-                rank = np.linalg.matrix_rank(M_numpy,tol=1e-3) 
-                logging.info("rank of M  {}and shape of M {}".format(rank, M_numpy.shape))
+                np.fill_diagonal(
+                    M_numpy,
+                    M_numpy.diagonal() +
+                    laplace_smoothing)
+                rank = np.linalg.matrix_rank(M_numpy, tol=1e-3)
+                logging.info(
+                    "rank of M  {}and shape of M {}".format(
+                        rank, M_numpy.shape))
                 r1_numpy = r1.detach().numpy()
                 r2_numpy = r2.detach().numpy()
                 ## will it be M????###
-                v_numpy = sp.linalg.solve( M_numpy ,r1_numpy ,assume_a='sym')
-                q_numpy = sp.linalg.solve( M_numpy ,r2_numpy ,assume_a='sym')
+                v_numpy = sp.linalg.solve(M_numpy, r1_numpy, assume_a='sym')
+                q_numpy = sp.linalg.solve(M_numpy, r2_numpy, assume_a='sym')
                 v = torch.from_numpy(v_numpy).float()
                 q = torch.from_numpy(q_numpy).float()
 
-            except:
+            except BaseException:
                 raise (LinAlgError)
-            p = x2* ( torch.mv(torch.t(A),q) - c)/mu
-            u = x2.view(-1,1)* ( torch.matmul(torch.t(A),v) - tau*torch.eye(n))/mu
+            p = x2 * (torch.mv(torch.t(A), q) - c) / mu
+            u = x2.view(-1, 1) * (torch.matmul(torch.t(A), v) -
+                                  tau * torch.eye(n)) / mu
             # logging.info("shape:: p  {} q  {} u {} v {}".format(p.shape, q.shape,
             #     u.shape, v.shape))
-            dtau = x + torch.mv(torch.t(u),c) -torch.mv(torch.t(v),b)
-            dtau = dtau/(b.dot(q) - c.dot(p)+ (mu/tau**2))
+            dtau = x + torch.mv(torch.t(u), c) - torch.mv(torch.t(v), b)
+            dtau = dtau / (b.dot(q) - c.dot(p) + (mu / tau**2))
             dxc = u + torch.einsum('i,j->ij', p, dtau)
-            dxc_cut = dxc[0:n_var,0:n_var]
+            dxc_cut = dxc[0:n_var, 0:n_var]
             dc = torch.mv(dxc_cut, del_x)
             # print("dc ",dc)
 
-            c_grad = torch.zeros(ctx.n_x,dtype=torch.float)
+            c_grad = torch.zeros(ctx.n_x, dtype=torch.float)
             c_grad[ctx.var_index] = dc
 
             # if any(torch.isnan(c_grad).tolist()):
-            #     logging.info("nan in bkwd pass ; del_x contains NaN?- {}".format(any(torch.isnan(del_x).tolist())))  
+            #     logging.info("nan in bkwd pass ; del_x contains NaN?- {}".format(any(torch.isnan(del_x).tolist())))
             # if any(torch.isinf(c_grad).tolist()):
-            #     logging.info("Inf in bkwd pass ; del_x contains Inf?- {}".format(any(torch.isinf(del_x).tolist())))  
-            
+            #     logging.info("Inf in bkwd pass ; del_x contains Inf?- {}".format(any(torch.isinf(del_x).tolist())))
+
             #dc = -del_x*x**2/mu
             #dA = -y*del_x*x**2/mu
             # dG = -z*del_x*x**2/mu
             # dG = torch.unsqueeze(dG, 0)
             # dA = torch.unsqueeze(dA, 0)
 
-
             end = time.time()
-            run_time += end -start 
-            # print("bkwd gradient",c_grad) 
+            run_time += end - start
+            # print("bkwd gradient",c_grad)
 
             return c_grad
+
     def Runtime():
-            return run_time
+        return run_time
+
     def end_vectors():
-            return save_for_initialization
+        return save_for_initialization
+
     def Runtime():
-            return run_time
+        return run_time
+
     def forward_solved():
         return problem_solved
 
-
     IPOfunc.Runtime = Runtime
     IPOfunc.end_vectors = end_vectors
-    IPOfunc.forward_solved = forward_solved    
+    IPOfunc.forward_solved = forward_solved
     return IPOfunc_cls.apply
-    
