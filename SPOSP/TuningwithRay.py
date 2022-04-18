@@ -15,7 +15,7 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.integration.pytorch_lightning import TuneReportCallback,  TuneReportCheckpointCallback
 from ray.tune.suggest import Repeater
 ######################################  Data Reading #########################################
-df = pd.read_csv("synthetic_path/data_N_100_noise_0.5_deg_2.csv")
+df = pd.read_csv("synthetic_path/data_N_1000_noise_0.5_deg_2.csv")
 N, noise, deg = 100,0.5,1
 
 y = df.iloc[:,3].values
@@ -88,8 +88,8 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
             "l1_weight":tune.grid_search([10**(k) for k in range(-5,1,2)]),
             "k":tune.grid_search([5,10]),
             "input_noise_temperature":tune.grid_search([0.1,0.5,1.0,2.0]),
-            # "nb_samples":tune.grid_search([1,5,10,50]),
-            # "nb_iterations":tune.grid_search([1,5,10]),
+            "nb_samples":tune.grid_search([1,10,50]),
+            "nb_iterations":tune.grid_search([1,5,10]),
         }
     scheduler = ASHAScheduler(
          time_attr='training_iteration',
@@ -99,7 +99,7 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
 
     reporter = CLIReporter(
         ### ***** Model Specific parameter *****
-            parameter_columns=[ "k","input_noise_temperature","l1_weight" ],
+            parameter_columns=[ "k","input_noise_temperature", "nb_samples", "nb_iterations", "l1_weight" ],
             metric_columns=[ "training_iteration","mse", "regret"])
     analysis = tune.run(
             tune.with_parameters(
@@ -125,14 +125,16 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
     best_trial.config["l1_weight"],  best_trial.last_result["training_iteration"]))
     print("*************** Last Epoch ***************")
     result_df = analysis.results_df
-    print( result_df.groupby(['config.k','config.input_noise_temperature','config.l1_weight']).agg({"regret":['mean','std'],
+    print( result_df.groupby(['config.k','config.input_noise_temperature',
+    'config.l1_weight','config.nb_samples','config.nb_iterations']).agg({"regret":['mean','std'],
     'training_iteration':'median','time_total_s':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string())
     # # print(.to_string())
 
     result_df = analysis.dataframe(metric="regret", mode="min")
     # print(result_df.to_string())
     print("*************** Minimal Epoch ***************")
-    print(result_df.groupby(['config/k','config/input_noise_temperature','config/l1_weight']).agg({"regret":['mean','std'],
+    print(result_df.groupby(['config/k','config/input_noise_temperature',
+    'config/l1_weight','config/nb_samples','config/nb_iterations']).agg({"regret":['mean','std'],
     'training_iteration':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string() )
     # print(analysis.trial_dataframes.to_string() )
 
