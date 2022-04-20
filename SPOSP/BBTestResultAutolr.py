@@ -23,13 +23,13 @@ def seed_all(seed):
 
 
 
-for seed in range(5,10):
+for seed in range(10):
     seed_all(seed)
     ######################################  Data Reading #########################################
 
-    N, noise, deg = 1000,0.5,1
+    N, noise, deg = 100,0,8
     ########## Hyperparams #########
-    l1_weight,mu = 0.001000, 0.01
+    l1_weight,mu = 1e-5,1e-4
     batchsize  = 32
     df = pd.read_csv("synthetic_path/data_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg))
     y = df.iloc[:,3].values

@@ -15,7 +15,7 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.integration.pytorch_lightning import TuneReportCallback,  TuneReportCheckpointCallback
 from ray.tune.suggest import Repeater
 ######################################  Data Reading #########################################
-df = pd.read_csv("synthetic_path/data_N_100_noise_0_deg_2.csv")
+df = pd.read_csv("synthetic_path/data_N_100_noise_0_deg_8.csv")
 N, noise, deg = 100,0.5,1
 
 y = df.iloc[:,3].values
@@ -128,7 +128,7 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=3, num_epochs=30
     result_df = analysis.dataframe(metric="regret", mode="min")
     # print(result_df.to_string())
     print("*************** Minimal Epoch ***************")
-    print(result_df.groupby(['config/k'
+    print(result_df.groupby(['config/mu',
     'config/l1_weight']).agg({"regret":['mean','std'],
     'training_iteration':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string() )
     # print(analysis.trial_dataframes.to_string() )
