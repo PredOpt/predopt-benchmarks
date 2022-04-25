@@ -27,9 +27,9 @@ for seed in range(10):
     seed_all(seed)
     ######################################  Data Reading #########################################
 
-    N, noise, deg = 100,0,4
+    N, noise, deg = 1000,0,4
     ########## Hyperparams #########
-    l1_weight,mu =  0.00100, 0.010000
+    l1_weight,mu =  0.10000, 0.000100
     batchsize  = 32
     df = pd.read_csv("synthetic_path/data_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg))
     y = df.iloc[:,3].values
