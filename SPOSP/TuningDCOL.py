@@ -15,9 +15,8 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.integration.pytorch_lightning import TuneReportCallback,  TuneReportCheckpointCallback
 from ray.tune.suggest import Repeater
 ######################################  Data Reading #########################################
-df = pd.read_csv("synthetic_path/data_N_100_noise_0.5_deg_4.csv")
+df = pd.read_csv("synthetic_path/data_N_1000_noise_0_deg_1.csv")
 N, noise, deg = 100,0.5,1
-
 
 y = df.iloc[:,3].values
 x= df.iloc[:,4:9].values
@@ -60,9 +59,9 @@ test_dl = DataLoader(test_df, batch_size= 250)
 ###################################### Tuning  #########################################
 def model_tune(config,train_dl, valid_dl, solpool=None,num_epochs=30, num_gpus=0):
     ##### ***** Model Specific name and parameter *****
-    model =  Blackbox(net=nn.Linear(5,1) ,
-    l1_weight = config['l1_weight'],mu= config['mu'],
-    seed=random.randint(0,10))
+    model =  SPO(net=nn.Linear(5,1) ,
+    l1_weight = config['l1_weight'],seed=random.randint(0,10))
+    model = DCOL(net=nn.Linear(5,1) ,l1_weight = config['l1_weight'],seed=random.randint(0,10))
     trainer = pl.Trainer(auto_lr_find=True)
     trainer.tune(model,train_dl, valid_dl)
     
@@ -84,8 +83,8 @@ def model_tune(config,train_dl, valid_dl, solpool=None,num_epochs=30, num_gpus=0
 def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30, gpus_per_trial=0):
     ### ***** Model Specific config *****
     config = {
-            "l1_weight":tune.grid_search([10**(k) for k in range(-5,2)]),
-            "mu":tune.grid_search([10**(k) for k in range(-6,3,2)])
+            # "lr": tune.grid_search([0.5,0.1,0.05,0.01,0.005, 0.001, 0.0005,0.0001]),
+            "l1_weight":tune.grid_search([10**(k) for k in range(-5,3)]),
         }
     scheduler = ASHAScheduler(
          time_attr='training_iteration',
@@ -95,7 +94,7 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
 
     reporter = CLIReporter(
         ### ***** Model Specific parameter *****
-            parameter_columns=[ "mu", "l1_weight" ],
+            parameter_columns=[ "l1_weight" ],
             metric_columns=[ "training_iteration","mse", "regret"])
     analysis = tune.run(
             tune.with_parameters(
@@ -121,16 +120,14 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=2, num_epochs=30
     best_trial.config["l1_weight"],  best_trial.last_result["training_iteration"]))
     print("*************** Last Epoch ***************")
     result_df = analysis.results_df
-    print( result_df.groupby(['config.mu',
-    'config.l1_weight']).agg({"regret":['mean','std'],
+    print( result_df.groupby(['config.l1_weight']).agg({"regret":['mean','std'],
     'training_iteration':'median','time_total_s':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string())
     # # print(.to_string())
 
     result_df = analysis.dataframe(metric="regret", mode="min")
     # print(result_df.to_string())
     print("*************** Minimal Epoch ***************")
-    print(result_df.groupby(['config/mu',
-    'config/l1_weight']).agg({"regret":['mean','std'],
+    print(result_df.groupby(['config/l1_weight']).agg({"regret":['mean','std'],
     'training_iteration':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string() )
     # print(analysis.trial_dataframes.to_string() )
 

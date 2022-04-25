@@ -27,9 +27,9 @@ for seed in range(10):
     seed_all(seed)
     ######################################  Data Reading #########################################
 
-    N, noise, deg = 100,0,8
+    N, noise, deg = 100,0,4
     ########## Hyperparams #########
-    l1_weight,mu = 1e-5,1e-4
+    l1_weight,mu =  0.00100, 0.010000
     batchsize  = 32
     df = pd.read_csv("synthetic_path/data_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg))
     y = df.iloc[:,3].values
@@ -112,8 +112,8 @@ for seed in range(10):
     df['mu'] =mu
     df['lr'] = suggested_lr
     df['l1_weight'] = l1_weight
-    with open(regretfile, 'a') as f:
-        df.to_csv(f, header=f.tell()==0)   
+    # with open(regretfile, 'a') as f:
+    #     df.to_csv(f, header=f.tell()==0)   
 
     result = trainer.test(model, dataloaders=test_dl)
     df = pd.DataFrame(result)
@@ -127,5 +127,5 @@ for seed in range(10):
     df['lr'] = suggested_lr
     df['l1_weight'] = l1_weight
     
-    with open(outputfile, 'a') as f:
-        df.to_csv(f, header=f.tell()==0)
+    # with open(outputfile, 'a') as f:
+    #     df.to_csv(f, header=f.tell()==0)
