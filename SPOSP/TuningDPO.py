@@ -116,8 +116,8 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=3, num_epochs=30
     best_trial = analysis.get_best_trial("regret", "min", "last")
     print("Best trial final validation regret: {} mse: {}".format(
         best_trial.last_result["regret"], best_trial.last_result["mse"]))
-    print("Best trial:    l1 weight {} final epoch- {}".format(   
-    best_trial.config["l1_weight"],  best_trial.last_result["training_iteration"]))
+    # print("Best trial:    l1 weight {} final epoch- {}".format(   
+    # best_trial.config["l1_weight"],  best_trial.last_result["training_iteration"]))
     print("*************** Last Epoch ***************")
     result_df = analysis.results_df
     print( result_df.groupby(['config.sigma']).agg({"regret":['mean','std'],
