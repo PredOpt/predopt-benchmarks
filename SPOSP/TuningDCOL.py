@@ -15,8 +15,8 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from ray.tune.integration.pytorch_lightning import TuneReportCallback,  TuneReportCheckpointCallback
 from ray.tune.suggest import Repeater
 ######################################  Data Reading #########################################
-df = pd.read_csv("synthetic_path/data_N_1000_noise_0_deg_1.csv")
-N, noise, deg = 100,0.5,1
+df = pd.read_csv("synthetic_path/data_N_100_noise_0_deg_4.csv")
+# N, noise, deg = 100,0.5,1
 
 y = df.iloc[:,3].values
 x= df.iloc[:,4:9].values
@@ -52,7 +52,7 @@ test_df =  datawrapper( x_test,y_test)
 # valid_dl = DataLoader(valid_df, batch_size= 5,worker_init_fn=seed_worker)
 # test_dl = DataLoader(test_df, batch_size= 50,worker_init_fn=seed_worker)
 ###############################################################################################
-train_dl = DataLoader(train_df, batch_size= 32)
+train_dl = DataLoader(train_df, batch_size= 128)
 valid_dl = DataLoader(valid_df, batch_size= 250)
 test_dl = DataLoader(test_df, batch_size= 250)
 
