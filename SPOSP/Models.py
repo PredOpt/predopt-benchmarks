@@ -433,7 +433,7 @@ class DPO(twostage_regression):
 ################################ Implementation of a Fenchel-Young loss using perturbation techniques #########################################
 
 class FenchelYoung(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,num_samples=10, sigma=0.1,lr=1e-1, l1_weight=0.1, seed=20):
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,num_samples=10, sigma=0.1,lr=1e-1, l1_weight=1e-5, seed=20):
         super().__init__(net,exact_solver , lr, l1_weight, seed)
         self.solver = solver
         self.num_samples = num_samples
@@ -453,8 +453,8 @@ class FenchelYoung(twostage_regression):
         criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = False, batched=False)
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
-        # for ii in range(len(y)):
-        #     loss +=  criterion(y_hat[ii],y[ii])
+        for ii in range(len(y)):
+            loss +=  criterion(y_hat[ii],y[ii])
 
         training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
