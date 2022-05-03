@@ -120,14 +120,14 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=3, num_epochs=30
     # best_trial.config["l1_weight"],  best_trial.last_result["training_iteration"]))
     print("*************** Last Epoch ***************")
     result_df = analysis.results_df
-    print( result_df.groupby(['config.sigma']).agg({"regret":['mean','std'],
+    print( result_df.groupby(['config.sigma']).agg({"regret":['mean','std','min'],
     'training_iteration':'median','time_total_s':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string())
     # # print(.to_string())
 
     result_df = analysis.dataframe(metric="regret", mode="min")
     # print(result_df.to_string())
     print("*************** Minimal Epoch ***************")
-    print(result_df.groupby(['config/sigma']).agg({"regret":['mean','std'],
+    print(result_df.groupby(['config/sigma']).agg({"regret":['mean','std','min'],
     'training_iteration':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string() )
     # print(analysis.trial_dataframes.to_string() )
 
