@@ -127,7 +127,7 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=3, num_epochs=30
     result_df = analysis.dataframe(metric="regret", mode="min")
     # print(result_df.to_string())
     print("*************** Minimal Epoch ***************")
-    print(result_df.groupby(['config/l1_weight']).agg({"regret":['mean','std'],
+    print(result_df.groupby(['config/sigma']).agg({"regret":['mean','std'],
     'training_iteration':'median'}).sort_values(by=[('regret', 'mean'), ('regret', 'std')]).to_string() )
     # print(analysis.trial_dataframes.to_string() )
 
