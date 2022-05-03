@@ -457,7 +457,9 @@ class FenchelYoung(twostage_regression):
             loss +=  criterion(y_hat[ii],y[ii])
 
         training_loss=  loss/len(y)  + l1penalty * self.l1_weight
-        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
+        self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
         return training_loss 
 ################################ Noise Contrastive Estimation ################################
 def batch_solve(solver, y,relaxation =False):

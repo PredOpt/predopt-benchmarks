@@ -56,7 +56,7 @@ class FenchelYoungLoss(nn.Module):
                  func = None,
                  num_samples = 1000,
                  sigma = 0.01,
-                 noise = perturbations._NORMAL,
+                 noise = perturbations._GUMBEL,
                  batched = True,
                  maximize = True,
                  device=None):
