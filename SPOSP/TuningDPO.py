@@ -60,7 +60,7 @@ test_dl = DataLoader(test_df, batch_size= 250)
 def model_tune(config,train_dl, valid_dl, solpool=None,num_epochs=30, num_gpus=0):
     ##### ***** Model Specific name and parameter *****
 
-    model = FenchelYoung(net=nn.Linear(5,1),sigma= config['l1_weight'],   seed=random.randint(0,10)) 
+    model = FenchelYoung(net=nn.Linear(5,1),sigma= config['sigma'],   seed=random.randint(0,10)) 
     
     trainer = pl.Trainer(auto_lr_find=True)
     trainer.tune(model,train_dl, valid_dl)
@@ -84,7 +84,7 @@ def tune_model_asha(train_dl, valid_dl,solpool=None,num_samples=3, num_epochs=30
     ### ***** Model Specific config *****
     config = {
             # "l1_weight":tune.grid_search([10**(k) for k in range(-5,3)]),
-            "sigma":tune.grid_search([0.01,0.1,0.5,1,10,50]),
+            "sigma":tune.grid_search([0.1,0.5,1,10,50,100,500]),
         }
     scheduler = ASHAScheduler(
          time_attr='training_iteration',
