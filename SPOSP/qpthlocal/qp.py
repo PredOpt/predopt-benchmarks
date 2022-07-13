@@ -10,6 +10,22 @@ from .solvers.pdipm import spbatch as pdipm_spb
 from enum import Enum
 import gurobipy as gp
 lb,ub = -gp.GRB.INFINITY, +gp.GRB.INFINITY
+# lb,ub = 0,1
+
+############# The previous code was not working with mvar
+############# I update according to  https://github.com/stephane-caron/qpsolvers/blob/8ae409b82a3148f38c271a8c8cb1c868045d89f5/qpsolvers/gurobi_.py
+
+def get_nonzero_rows(M):
+    nonzero_rows = {}
+    rows, cols = M.nonzero()
+    for ij in zip(rows, cols):
+        i, j = ij
+        if i not in nonzero_rows:
+            nonzero_rows[i] = []
+        nonzero_rows[i].append(j)
+    return nonzero_rows
+
+
 
 def forward_single_np_gurobi(Q, p, G, h, A, b):
     import gurobipy as gp
@@ -44,17 +60,24 @@ def forward_single_np_gurobi(Q, p, G, h, A, b):
     #     G * x <= h
     inequality_constraints = []
     if G is not None:
-        for i in range(G.shape[0]):
-            row = np.where(G[i] != 0)[0]
+        G_nonzero_rows = get_nonzero_rows(G)
+        for i, row in G_nonzero_rows.items():
+            ############### Updated for new mvar type  ###############
             inequality_constraints.append(model.addConstr(gp.quicksum(G[i, j] * x[j] for j in row) <= h[i]))
+            # row = np.where(G[i] != 0)[0]
+            # inequality_constraints.append(model.addConstr(gp.quicksum(G[i, j] * x[j] for j in row) <= h[i]))
 
     # subject to
     #     A * x == b
     equality_constraints = []
     if A is not None:
-        for i in range(A.shape[0]):
-            row = np.where(A[i] != 0)[0]
+        ############### Updated for new mvar type  ###############
+        A_nonzero_rows = get_nonzero_rows(A)
+        for i, row in A_nonzero_rows.items():
             equality_constraints.append(model.addConstr(gp.quicksum(A[i, j] * x[j] for j in row) == b[i]))
+        # for i in range(A.shape[0]):
+        #     row = np.where(A[i] != 0)[0]
+        #     equality_constraints.append(model.addConstr(gp.quicksum(A[i, j] * x[j] for j in row) == b[i]))
 
     model.optimize()
 
@@ -88,17 +111,32 @@ def make_gurobi_model(G, h, A, b, Q):
     #     G * x <= h
     inequality_constraints = []
     if G is not None:
-        for i in range(G.shape[0]):
-            row = np.where(G[i] != 0)[0]
+        G_nonzero_rows = get_nonzero_rows(G)
+        for i, row in G_nonzero_rows.items():
+            ############### Updated for new mvar type  ###############
             inequality_constraints.append(model.addConstr(gp.quicksum(G[i, j] * x[j] for j in row) <= h[i]))
+            # row = np.where(G[i] != 0)[0]
+            # inequality_constraints.append(model.addConstr(gp.quicksum(G[i, j] * x[j] for j in row) <= h[i]))
 
     # subject to
     #     A * x == b
     equality_constraints = []
     if A is not None:
-        for i in range(A.shape[0]):
-            row = np.where(A[i] != 0)[0]
+        ############### Updated for new mvar type  ###############
+        A_nonzero_rows = get_nonzero_rows(A)
+        for i, row in A_nonzero_rows.items():
             equality_constraints.append(model.addConstr(gp.quicksum(A[i, j] * x[j] for j in row) == b[i]))
+        # for i in range(A.shape[0]):
+        #     row = np.where(A[i] != 0)[0]
+        #     equality_constraints.append(model.addConstr(gp.quicksum(A[i, j] * x[j] for j in row) == b[i]))
+
+    ############### Debugging  ###############
+    # A = model.getA()
+    # print("########### A Matrix ###########")
+    # print(A.toarray())
+    # print(model.getAttr('Sense', model.getConstrs()))
+    # print("############# RHS ##############")
+    # print(model.getAttr('RHS', model.getConstrs()))
 
     obj = gp.QuadExpr()
     if Q is not None:
@@ -116,6 +154,7 @@ def forward_gurobi_prebuilt(Q, p, model, x, inequality_constraints, equality_con
     for i in range(len(p)):
         obj += p[i] * x[i]
     model.setObjective(obj, gp.GRB.MINIMIZE)
+    
     model.presolve()
     
     ### I change the numeric focus to 2 to mitigate numerical issues 
@@ -132,6 +171,8 @@ def forward_gurobi_prebuilt(Q, p, model, x, inequality_constraints, equality_con
         lam = np.array([inequality_constraints[i].pi for i in range(len(inequality_constraints))])
         nu = np.array([equality_constraints[i].pi for i in range(len(equality_constraints))])
     else:
+        model.computeIIS()
+        model.write("Infeasible_QPTmodel.ilp")
         raise Exception('Model is not solved till optimal, model status {}'.format(model.status))
 
     return model.ObjVal, x_opt, nu, lam, slacks
@@ -375,7 +416,7 @@ def QPFunction(eps=1e-12, verbose=0, notImprovedLim=3,
             # if torch.any(torch.isinf(t).flatten()):
             #     raise Exception('Grads of dp have Inf')
             ########## There are nan in some problems, I am replacing them with zero
-            dps = torch.nan_to_num(dps, nan=1., posinf=1., neginf=-1., )
+            # dps = torch.nan_to_num(dps, nan=1., posinf=1., neginf=-1., )
             ###################################################
 
 
