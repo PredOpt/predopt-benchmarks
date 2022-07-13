@@ -26,12 +26,12 @@ normed_net = nn.Sequential(*net_layers)
 ############### Configuration
 N, noise, deg = 1000,0.5,1
 ###################################### Hyperparams #########################################
-lr = 0.1
+lr = 0.7
 l1_weight = 1e-5
 batchsize  = 128
 max_epochs = 40
 nb_iterations,nb_samples=1, 1
-input_noise_temperature , target_noise_temperature=0.1, 1.0
+input_noise_temperature , target_noise_temperature= 0.1, 1.0
 ######################################  Data Reading #########################################
 
 Train_dfx= pd.read_csv("SyntheticData/TraindataX_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None)

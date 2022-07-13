@@ -62,15 +62,22 @@ class shortestpath_solver:
 spsolver =  shortestpath_solver()
 ###################################### Wrapper #########################################
 class datawrapper():
-    def __init__(self, x,y):
+    def __init__(self, x,y, sol=None, solver= spsolver ):
         self.x = x
         self.y = y
+        if sol is None:
+            sol = []
+            for i in range(len(y)):
+                sol.append(   solver.shortest_pathsolution(y[i])   )            
+            sol = np.array(sol).astype(np.float32)
+        self.sol = sol
 
     def __len__(self):
         return len(self.y)
     
     def __getitem__(self, index):
-        return self.x[index], self.y[index]
+        return self.x[index], self.y[index],self.sol[index]
+
 
 ###################################### Dataloader #########################################
 
@@ -102,22 +109,22 @@ def batch_solve(solver, y,relaxation =False):
     return torch.cat(sol,0)
 
 
-def regret_fn(solver, y_hat,y, minimize= True):  
+def regret_fn(solver, y_hat,y_true, sol_true, minimize= True):  
     '''
     computes regret given predicted y_hat and true y
     '''
     regret_list = []
-    for ii in range(len(y)):
-        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y[ii]) )
+    for ii in range(len(y_true)):
+        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii], sol_true[ii]) )
     return torch.mean( torch.tensor(regret_list ))
 
-def regret_aslist(solver, y_hat,y, minimize= True):  
+def regret_aslist(solver, y_hat,y_true, sol_true, minimize= True):  
     '''
     computes regret of more than one cost vectors
     ''' 
     regret_list = []
-    for ii in range(len(y)):
-        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y[ii]).item() )
+    for ii in range(len(y_true)):
+        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii], sol_true[ii]).item() )
     return np.array(regret_list)
 
 class twostage_regression(pl.LightningModule):
@@ -143,7 +150,9 @@ class twostage_regression(pl.LightningModule):
     def forward(self,x):
         return self.net(x) 
     def training_step(self, batch, batch_idx):
-        x,y = batch
+        
+        x,y, sol = batch
+        
         y_hat =  self(x).squeeze()
         criterion = nn.MSELoss(reduction='mean')
         loss = criterion(y_hat,y)
@@ -155,15 +164,16 @@ class twostage_regression(pl.LightningModule):
         return training_loss 
     def validation_step(self, batch, batch_idx):
         criterion = nn.MSELoss(reduction='mean')
-        x,y = batch
+        x,y, sol = batch
+        
         y_hat =  self(x).squeeze()
         mseloss = criterion(y_hat, y)
-        regret_loss =  regret_fn(self.exact_solver, y_hat,y) 
-        pointwise_loss = pointwise_crossproduct_loss(y_hat,y)
+        regret_loss =  regret_fn(self.exact_solver, y_hat,y, sol) 
+        # pointwise_loss = pointwise_crossproduct_loss(y_hat,y)
 
         self.log("val_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("val_regret", regret_loss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("val_pointwise", pointwise_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        # self.log("val_pointwise", pointwise_loss, prog_bar=True, on_step=True, on_epoch=True, )
 
         return {"val_mse":mseloss, "val_regret":regret_loss}
     def validation_epoch_end(self, outputs):
@@ -176,15 +186,15 @@ class twostage_regression(pl.LightningModule):
         
     def test_step(self, batch, batch_idx):
         criterion = nn.MSELoss(reduction='mean')
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         mseloss = criterion(y_hat, y)
-        regret_loss =  regret_fn(self.exact_solver, y_hat,y) 
-        pointwise_loss = pointwise_crossproduct_loss(y_hat,y)
+        regret_loss =  regret_fn(self.exact_solver, y_hat,y, sol) 
+        # pointwise_loss = pointwise_crossproduct_loss(y_hat,y)
 
         self.log("test_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("test_regret", regret_loss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("test_pointwise", pointwise_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        # self.log("test_pointwise", pointwise_loss, prog_bar=True, on_step=True, on_epoch=True, )
 
         return {"test_mse":mseloss, "test_regret":regret_loss}
     # def configure_optimizers(self):
@@ -237,35 +247,35 @@ def SPOLoss(solver, minimize=True):
     mm = 1 if minimize else -1
     class SPOLoss_cls(torch.autograd.Function):
         @staticmethod
-        def forward(ctx, y_pred, y_true):
+        def forward(ctx, y_pred, y_true, sol_true):
        
             sol_hat = solver.solution_fromtorch(y_pred)
             sol_spo = solver.solution_fromtorch(2* y_pred - y_true)
-            sol_true = solver.solution_fromtorch(y_true)
+            # sol_true = solver.solution_fromtorch(y_true)
             ctx.save_for_backward(sol_spo,  sol_true, sol_hat)
             return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
 
         @staticmethod
         def backward(ctx, grad_output):
             sol_spo,  sol_true, sol_hat = ctx.saved_tensors
-            return mm*(sol_true - sol_spo), None
+            return mm*(sol_true - sol_spo), None, None
             
     return SPOLoss_cls.apply
 def BlackboxLoss(solver,mu=0.1, minimize=True):
     mm = 1 if minimize else -1
     class BlackboxLoss_cls(torch.autograd.Function):
         @staticmethod
-        def forward(ctx, y_pred, y_true):
+        def forward(ctx, y_pred, y_true, sol_true):
             sol_hat = solver.solution_fromtorch(y_pred)
             sol_perturbed = solver.solution_fromtorch(y_pred + mu* y_true)
-            sol_true = solver.solution_fromtorch(y_true)
+            # sol_true = solver.solution_fromtorch(y_true)
             ctx.save_for_backward(sol_perturbed,  sol_true, sol_hat)
             return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
 
         @staticmethod
         def backward(ctx, grad_output):
             sol_perturbed,  sol_true, sol_hat = ctx.saved_tensors
-            return -mm*(sol_hat - sol_perturbed)/mu, None
+            return -mm*(sol_hat - sol_perturbed)/mu, None, None
             
     return BlackboxLoss_cls.apply
 
@@ -279,12 +289,12 @@ class SPO(twostage_regression):
         """
         super().__init__(net,exact_solver, lr, l1_weight,max_epochs, seed)
     def training_step(self, batch, batch_idx):
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
         for ii in range(len(y)):
-            loss += SPOLoss(self.exact_solver)(y_hat[ii],y[ii])
+            loss += SPOLoss(self.exact_solver)(y_hat[ii],y[ii], sol[ii])
         training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
@@ -300,13 +310,13 @@ class Blackbox(twostage_regression):
         self.mu = mu
         self.save_hyperparameters("lr","mu")
     def training_step(self, batch, batch_idx):
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
         for ii in range(len(y)):
-            loss += BlackboxLoss(self.exact_solver,self.mu)(y_hat[ii],y[ii])
+            loss += BlackboxLoss(self.exact_solver,self.mu)(y_hat[ii],y[ii], sol[ii])
         training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
@@ -502,7 +512,7 @@ class CachingPO(twostage_regression):
     
  
     def training_step(self, batch, batch_idx):
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         if (np.random.random(1)[0]<= self.growth) or len(self.cache)==0:
             self.cache = growcache(self.exact_solver, self.cache, y_hat)
@@ -563,7 +573,7 @@ class DCOL(twostage_regression):
         self.solver = cvxsolver()
     def training_step(self, batch, batch_idx):
         solver = self.solver
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
@@ -697,7 +707,7 @@ class IMLE(twostage_regression):
 
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
 
@@ -738,7 +748,7 @@ class DPO(twostage_regression):
         self.solver = solver
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
@@ -767,7 +777,7 @@ class FenchelYoung(twostage_regression):
         self.sigma = sigma
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
-        x,y = batch
+        x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         solver= self.solver
@@ -791,88 +801,56 @@ class FenchelYoung(twostage_regression):
         self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
         return training_loss 
 ################################ Noise Contrastive Estimation ################################
-def batch_solve(solver, y,relaxation =False):
-    sol = []
-    for i in range(len(y)):
-        sol.append(   solver.solution_fromtorch(y[i]).reshape(1,-1)   )
-    return torch.cat(sol,0)
-def MAP(sol,y,solpool,minimize=True):
-    '''
-    sol, y and y_hat are torch array [batch_size,48]
-    solpool is torch array [currentpoolsize,48]
-    '''
-    mm = 1 if minimize else -1 
-    loss = 0
-    # print("shape check", sol.shape, y.shape,y_hat.shape, solpool.shape)
-    for ii in range(len(y)):
-        loss += torch.max(((sol[ii] - solpool )*(mm*y[ii]  )).sum(dim=1))
-    return loss
-def MAP_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
-    sol = batch_solve(spsolver, y_hat,relaxation =False)
-    y = y_hat 
-    return MAP(sol,y,solpool,minimize)
-def MAP_hatc_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
-    sol = batch_solve(spsolver, y_hat,relaxation =False)
-    y = y_hat - y_true
-    return MAP(sol,y,solpool,minimize)
 
-def NCE(sol,y,solpool,minimize=True):
-    '''
-    sol, y and y_hat are torch array [batch_size,48]
-    solpool is torch array [currentpoolsize,48]
-    '''
-    mm = 1 if minimize else -1 
-    loss = 0
-    # print("shape check", sol.shape, y.shape,y_hat.shape, solpool.shape)
-    for ii in range(len(y)):
-        loss += torch.mean(((sol[ii] - solpool )*(mm*y[ii]  )).sum(dim=1))
-    return loss
-def NCE_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
-    sol = batch_solve( spsolver, y_hat,relaxation =False)
-    y = y_hat 
-    return NCE(sol,y,solpool,minimize)
-def NCE_hatc_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
-    sol = batch_solve(spsolver, y_hat,relaxation =False)
-    y = y_hat - y_true
-    return NCE(sol,y,solpool,minimize)
+# def MAP(sol,y,solpool,minimize=True):
+#     '''
+#     sol, y and y_hat are torch array [batch_size,48]
+#     solpool is torch array [currentpoolsize,48]
+#     '''
+#     mm = 1 if minimize else -1 
+#     loss = 0
+#     # print("shape check", sol.shape, y.shape,y_hat.shape, solpool.shape)
+#     for ii in range(len(y)):
+#         loss += torch.max(((sol[ii] - solpool )*(mm*y[ii]  )).sum(dim=1))
+#     return loss
+# def MAP_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+#     sol = batch_solve(spsolver, y_hat,relaxation =False)
+#     y = y_hat 
+#     return MAP(sol,y,solpool,minimize)
+# def MAP_hatc_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+#     sol = batch_solve(spsolver, y_hat,relaxation =False)
+#     y = y_hat - y_true
+#     return MAP(sol,y,solpool,minimize)
+
+# def NCE(sol,y,solpool,minimize=True):
+#     '''
+#     sol, y and y_hat are torch array [batch_size,48]
+#     solpool is torch array [currentpoolsize,48]
+#     '''
+#     mm = 1 if minimize else -1 
+#     loss = 0
+#     # print("shape check", sol.shape, y.shape,y_hat.shape, solpool.shape)
+#     for ii in range(len(y)):
+#         loss += torch.mean(((sol[ii] - solpool )*(mm*y[ii]  )).sum(dim=1))
+#     return loss
+# def NCE_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+#     sol = batch_solve( spsolver, y_hat,relaxation =False)
+#     y = y_hat 
+#     return NCE(sol,y,solpool,minimize)
+# def NCE_hatc_c(y_hat,y_true,solpool,minimize=True,*wd,**kwd):
+#     sol = batch_solve(spsolver, y_hat,relaxation =False)
+#     y = y_hat - y_true
+#     return NCE(sol,y,solpool,minimize)
 
 
 
-def growpool_fn(solver, solpool, y_hat):
-    '''
-    solpool is torch array [currentpoolsize,48]
-    y_hat is  torch array [batch_size,48]
-    '''
-    sol = batch_solve(solver, y_hat,relaxation =False).detach().numpy()
-    solpool_np = solpool.detach().numpy()
-    solpool_np = np.unique(np.append(solpool_np,sol,axis=0),axis=0)
-    # torch has no unique function, so we have to do this
-    return torch.from_numpy(solpool_np).float()
-class SemanticPO(twostage_regression):
-    def __init__(self,loss_fn,solpool, net,solver= spsolver,exact_solver = spsolver,growth=0.1,margin=0.,lr=1e-1):
-        super().__init__(net,exact_solver,lr)
-        # self.save_hyperparameters()
-        self.loss_fn = loss_fn
-        solpool_np = solpool.detach().numpy()
-        solpool_np = np.unique(solpool_np,axis=0)
-        # torch has no unique function, so we have to do this
-        self.solpool = torch.from_numpy(solpool_np).float()
-        self.growpool_fn = growpool_fn
-        self.growth = growth
-        self.margin = margin
-        self.solver = solver
-        self.save_hyperparameters("lr","growth","margin")
-    
- 
-    def training_step(self, batch, batch_idx):
-        x,y = batch
-        y_hat =  self(x).squeeze()
-        if (np.random.random(1)[0]< self.growth) or len(self.solpool)==0:
-            #### We have to use seed
-            #### Also we are solving for all instances of a batch
-            self.solpool = self.growpool_fn(self.solver, self.solpool, y_hat)
-
-  
-        loss = self.loss_fn(y_hat,y,self.solpool, self.margin)
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss
+# def growpool_fn(solver, solpool, y_hat):
+#     '''
+#     solpool is torch array [currentpoolsize,48]
+#     y_hat is  torch array [batch_size,48]
+#     '''
+#     sol = batch_solve(solver, y_hat,relaxation =False).detach().numpy()
+#     solpool_np = solpool.detach().numpy()
+#     solpool_np = np.unique(np.append(solpool_np,sol,axis=0),axis=0)
+#     # torch has no unique function, so we have to do this
+#     return torch.from_numpy(solpool_np).float()

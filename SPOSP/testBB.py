@@ -26,9 +26,9 @@ normed_net = nn.Sequential(*net_layers)
 ############### Configuration
 N, noise, deg = 1000,0.5,1
 ###################################### Hyperparams #########################################
-lr = 0.5
+lr = 0.7
 l1_weight = 1e-5
-mu = 1e-6
+mu = 1e-1
 batchsize  = 128
 max_epochs = 40
 ######################################  Data Reading #########################################
