@@ -36,7 +36,7 @@ class shortestpath_solver:
     
     def shortest_pathsolution(self, y):
         '''
-        y the vector of  edge weight
+        y: the vector of  edge weight
         '''
         A = nx.incidence_matrix(G,oriented=True).todense()
         b =  np.zeros(len(A))
@@ -50,6 +50,44 @@ class shortestpath_solver:
         model.optimize()
         if model.status==2:
             return x.x
+    def is_uniquesolution(self, y):
+        '''
+        y: the vector of  edge weight
+        '''
+        A = nx.incidence_matrix(G,oriented=True).todense()
+        b =  np.zeros(len(A))
+        b[0] = -1
+        b[-1] =1
+        model = gp.Model()
+        model.setParam('OutputFlag', 0)
+        x = model.addMVar(shape=A.shape[1], vtype=gp.GRB.BINARY, name="x")
+        model.setObjective(y @x, gp.GRB.MINIMIZE)
+        model.addConstr(A @ x == b, name="eq")
+        model.setParam('PoolSearchMode', 2)
+        model.setParam('PoolSolutions', 100)
+        #model.PoolObjBound(obj)
+        model.setParam('PoolGap', 0.0)
+        model.optimize()
+        self.model = model
+        return model.SolCount<=1 
+
+    def highest_regretsolution(self,y,y_true, minimize=True):
+        mm = 1 if minimize else -1
+        
+        if self.is_uniquesolution(y):
+            model = self.model
+            return model.Xn
+        else:
+            model = self.model
+            sols = []
+            for solindex in range(model.SolCount):
+                model.setParam('SolutionNumber', solindex)
+                sols.append(model.Xn)  
+            sols = np.array(sols)
+            print(sols.dot(y_true))
+            return sols[np.argmax(sols.dot(y_true)*mm, axis=0)] 
+
+
     def solution_fromtorch(self,y_torch):
         if y_torch.dim()==1:
             return torch.from_numpy(self.shortest_pathsolution( y_torch.detach().numpy())).float()
@@ -58,6 +96,16 @@ class shortestpath_solver:
             for ii in range(len(y_torch)):
                 solutions.append(torch.from_numpy(self.shortest_pathsolution( y_torch[ii].detach().numpy())).float())
             return torch.stack(solutions)
+    def highest_regretsolution_fromtorch(self,y_hat,y_true,minimize=True):
+        if y_hat.dim()==1:
+            return torch.from_numpy(self.highest_regretsolution( y_hat.detach().numpy(),
+                     y_true.detach().numpy())).float()
+        else:
+            solutions = []
+            for ii in range(len(y_hat)):
+                solutions.append(torch.from_numpy(self.highest_regretsolution( y_hat[ii].detach().numpy(),
+                     y_true[ii].detach().numpy())).float())
+            return torch.stack(solutions)       
         
 spsolver =  shortestpath_solver()
 ###################################### Wrapper #########################################
@@ -204,6 +252,7 @@ class twostage_regression(pl.LightningModule):
     #     steps_per_epoch = num_batches)
     #     return [optimizer], [scheduler]
     def configure_optimizers(self):
+        ############# Adapted from https://pytorch-lightning.readthedocs.io/en/stable/api/pytorch_lightning.core.LightningModule.html ###
         # REQUIRED
         # can return multiple optimizers and learning_rate schedulers
         # (LBFGS it is automatically supported, no need for closure function)
@@ -225,9 +274,7 @@ class twostage_regression(pl.LightningModule):
                     "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(optimizer, mode='min',
             factor=0.2,
             patience=2,
-            min_lr=1e-6,
-            verbose=True
-        ),
+            min_lr=1e-6),
                     "monitor": "val_regret",
                     # "frequency": "indicates how often the metric is updated"
                     # If "monitor" references validation metrics, then "frequency" should be set to a
@@ -261,6 +308,29 @@ def SPOLoss(solver, minimize=True):
             return mm*(sol_true - sol_spo), None, None
             
     return SPOLoss_cls.apply
+
+def WorstcaseSPOLoss(solver, minimize=True):
+    mm = 1 if minimize else -1
+    class SPOLoss_cls(torch.autograd.Function):
+        @staticmethod
+        def forward(ctx, y_pred, y_true, sol_true):
+       
+            # sol_hat = solver.solution_fromtorch(y_pred)
+            sol_hat = solver.highest_regretsolution_fromtorch(y_pred,y_true,minimize=True)
+            sol_spo = solver.solution_fromtorch(2* y_pred - y_true)
+            # sol_true = solver.solution_fromtorch(y_true)
+            ctx.save_for_backward(sol_spo,  sol_true, sol_hat)
+            return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
+
+        @staticmethod
+        def backward(ctx, grad_output):
+            sol_spo,  sol_true, sol_hat = ctx.saved_tensors
+            return mm*(sol_true - sol_spo), None, None
+            
+    return SPOLoss_cls.apply
+
+
+
 def BlackboxLoss(solver,mu=0.1, minimize=True):
     mm = 1 if minimize else -1
     class BlackboxLoss_cls(torch.autograd.Function):
