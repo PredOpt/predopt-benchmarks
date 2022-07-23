@@ -1,4 +1,5 @@
 import os
+import logging
 import torch 
 from torch import nn, optim
 from torch.autograd import Variable
@@ -15,6 +16,7 @@ from imle.target import TargetDistribution
 from imle.noise import SumOfGammaNoiseDistribution
 from DPO import perturbations
 from DPO import fenchel_young as fy
+logging.basicConfig(filename='Uniquesolutions.log', level=logging.INFO)
 ###################################### Graph Structure ###################################################
 V = range(25)
 E = []
@@ -76,16 +78,16 @@ class shortestpath_solver:
         
         if self.is_uniquesolution(y):
             model = self.model
-            return model.Xn
+            return np.array(model.Xn).astype(np.float32), 0
         else:
             model = self.model
             sols = []
             for solindex in range(model.SolCount):
                 model.setParam('SolutionNumber', solindex)
                 sols.append(model.Xn)  
-            sols = np.array(sols)
-            print(sols.dot(y_true))
-            return sols[np.argmax(sols.dot(y_true)*mm, axis=0)] 
+            sols = np.array(sols).astype(np.float32)
+            # print(sols.dot(y_true))
+            return sols[np.argmax(sols.dot(y_true)*mm, axis=0)], 1 
 
 
     def solution_fromtorch(self,y_torch):
@@ -98,14 +100,18 @@ class shortestpath_solver:
             return torch.stack(solutions)
     def highest_regretsolution_fromtorch(self,y_hat,y_true,minimize=True):
         if y_hat.dim()==1:
-            return torch.from_numpy(self.highest_regretsolution( y_hat.detach().numpy(),
-                     y_true.detach().numpy())).float()
+            sol, nonunique_cnt = self.highest_regretsolution( y_hat.detach().numpy(),
+                     y_true.detach().numpy(),minimize  )
+            return torch.from_numpy(sol).float(), nonunique_cnt
         else:
             solutions = []
+            nonunique_cnt =0
             for ii in range(len(y_hat)):
-                solutions.append(torch.from_numpy(self.highest_regretsolution( y_hat[ii].detach().numpy(),
-                     y_true[ii].detach().numpy())).float())
-            return torch.stack(solutions)       
+                sol,nn = self.highest_regretsolution( y_hat[ii].detach().numpy(),
+                     y_true[ii].detach().numpy(),minimize )
+                solutions.append(torch.from_numpy(sol).float())
+                nonunique_cnt += nn
+            return torch.stack(solutions) , nonunique_cnt      
         
 spsolver =  shortestpath_solver()
 ###################################### Wrapper #########################################
@@ -130,21 +136,21 @@ class datawrapper():
 ###################################### Dataloader #########################################
 
 class ShortestPathDataModule(pl.LightningDataModule):
-    def __init__(self, train_df,valid_df,test_df,generator, batch_size: int = 32, num_workers: int=8):
+    def __init__(self, train_df,valid_df,test_df,generator, batchsize: int = 32, num_workers: int=8):
         super().__init__()
         self.train_df = train_df
         self.valid_df =  valid_df
         self.test_df = test_df
-        self.batch_size = batch_size
+        self.batchsize = batchsize
         self.generator =  generator
         self.num_workers = num_workers
 
 
     def train_dataloader(self):
-        return DataLoader(self.train_df, batch_size=self.batch_size,generator= self.generator, num_workers=self.num_workers)
+        return DataLoader(self.train_df, batch_size=self.batchsize,generator= self.generator, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.valid_df, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.valid_df, batch_size=self.batchsize,generator= self.generator, num_workers=self.num_workers)
 
     def test_dataloader(self):
         return DataLoader(self.test_df, batch_size=1000, num_workers=self.num_workers)
@@ -316,10 +322,11 @@ def WorstcaseSPOLoss(solver, minimize=True):
         def forward(ctx, y_pred, y_true, sol_true):
        
             # sol_hat = solver.solution_fromtorch(y_pred)
-            sol_hat = solver.highest_regretsolution_fromtorch(y_pred,y_true,minimize=True)
+            sol_hat,  nonunique_cnt = solver.highest_regretsolution_fromtorch(y_pred,y_true,minimize=True)
             sol_spo = solver.solution_fromtorch(2* y_pred - y_true)
             # sol_true = solver.solution_fromtorch(y_true)
             ctx.save_for_backward(sol_spo,  sol_true, sol_hat)
+            logging.info("{}/{} number of y have Nonunique solutions".format(nonunique_cnt,len(y_pred)))
             return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
 
         @staticmethod
@@ -352,19 +359,22 @@ def BlackboxLoss(solver,mu=0.1, minimize=True):
 
 
 class SPO(twostage_regression):
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
+    def __init__(self,net,exact_solver = spsolver,loss_fn=SPOLoss,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
         """
         Implementaion of SPO+ loss subclass of twostage model
+            loss_fn: loss function 
+
  
         """
         super().__init__(net,exact_solver, lr, l1_weight,max_epochs, seed)
+        self.loss_fn = loss_fn
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
         for ii in range(len(y)):
-            loss += SPOLoss(self.exact_solver)(y_hat[ii],y[ii], sol[ii])
+            loss += self.loss_fn(self.exact_solver)(y_hat[ii],y[ii], sol[ii])
         training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
