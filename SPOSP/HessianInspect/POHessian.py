@@ -16,15 +16,29 @@ def eigen_plot(hess,figname='example'):
     
     w, v = LA.eig(hess)
     w = np.sort(w, axis=None) 
-    # plt.hist( w,bins= int(max(w))+1)
-    plt.bar(w,np.ones_like(w),width=0.05)
+    #np.savetxt('test.out', w, delimiter=',')
+
+    plt.hist( w )
+    # plt.bar(w,np.ones_like(w),width=0.05)
     plt.ylabel('', fontsize=14, labelpad=10)
-    plt.xlabel('Eigevalues', fontsize=14, labelpad=10)
+    plt.xlabel('Eigenvalues', fontsize=14, labelpad=10)
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
     # plt.axis([np.min(eigenvalues) - 1, np.max(eigenvalues) + 1, None, None])
     plt.tight_layout()
     plt.savefig('{}.png'.format(figname))
+def gradient_plot(grads,figname='example'):
+    import matplotlib.pyplot as plt
+    from numpy import linalg as LA
+    plt.hist( grads )
+    # plt.bar(w,np.ones_like(w),width=0.05)
+    plt.ylabel('', fontsize=14, labelpad=10)
+    plt.xlabel('Gradients', fontsize=14, labelpad=10)
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
+    # plt.axis([np.min(eigenvalues) - 1, np.max(eigenvalues) + 1, None, None])
+    plt.tight_layout()
+    plt.savefig('{}.png'.format(figname))    
 
 def hessian(model,criterion, x_data,y_data,figname='example'):
     '''
@@ -38,7 +52,8 @@ def hessian(model,criterion, x_data,y_data,figname='example'):
         env_grads = torch.autograd.grad(env_loss, param, retain_graph=True, create_graph=True, allow_unused=True)
         len_grad = len(env_grads[0].flatten())
         flatten_grads = env_grads[0].flatten()
-        print("grad shape",env_grads[0].shape)
+        print("grad shape",env_grads[0].shape,len_grad)
+        gradient_plot(flatten_grads.detach().numpy(),figname=figname+'Gradient_layer'+str(layer))
         # row_size = env_grads[0].size(0)
         # col_size = env_grads[0].size(1)
         hess_params = torch.zeros(len_grad, len_grad)
@@ -53,8 +68,10 @@ def hessian(model,criterion, x_data,y_data,figname='example'):
 
 
 
-        eigen_plot(hess_params.detach().numpy(),figname=figname+'_layer'+str(layer))
+        eigen_plot(hess_params.detach().numpy(),figname=figname+'Hessian_layer'+str(layer))
         layer +=1
+
+
 ###################################### Graph Structure ###################################################
 V = range(25)
 E = []
@@ -68,7 +85,6 @@ for i in V:
 G = nx.DiGraph()
 G.add_nodes_from(V)
 G.add_edges_from(E)
-
 ###################################### Gurobi Shortest path Solver #########################################
 class shortestpath_solver:
     def __init__(self,G= G):
@@ -116,7 +132,7 @@ class shortestpath_solver:
         
         if self.is_uniquesolution(y):
             model = self.model
-            return np.array(model.Xn).astype(np.float32)
+            return np.array(model.Xn).astype(np.float32), 0
         else:
             model = self.model
             sols = []
@@ -124,8 +140,8 @@ class shortestpath_solver:
                 model.setParam('SolutionNumber', solindex)
                 sols.append(model.Xn)  
             sols = np.array(sols).astype(np.float32)
-            print(sols.dot(y_true))
-            return sols[np.argmax(sols.dot(y_true)*mm, axis=0)] 
+            # print(sols.dot(y_true))
+            return sols[np.argmax(sols.dot(y_true)*mm, axis=0)], 1 
 
 
     def solution_fromtorch(self,y_torch):
@@ -138,14 +154,18 @@ class shortestpath_solver:
             return torch.stack(solutions)
     def highest_regretsolution_fromtorch(self,y_hat,y_true,minimize=True):
         if y_hat.dim()==1:
-            return torch.from_numpy(self.highest_regretsolution( y_hat.detach().numpy(),
-                     y_true.detach().numpy())).float()
+            sol, nonunique_cnt = self.highest_regretsolution( y_hat.detach().numpy(),
+                     y_true.detach().numpy(),minimize  )
+            return torch.from_numpy(sol).float(), nonunique_cnt
         else:
             solutions = []
+            nonunique_cnt =0
             for ii in range(len(y_hat)):
-                solutions.append(torch.from_numpy(self.highest_regretsolution( y_hat[ii].detach().numpy(),
-                     y_true[ii].detach().numpy())).float())
-            return torch.stack(solutions)       
+                sol,nn = self.highest_regretsolution( y_hat[ii].detach().numpy(),
+                     y_true[ii].detach().numpy(),minimize )
+                solutions.append(torch.from_numpy(sol).float())
+                nonunique_cnt += nn
+            return torch.stack(solutions) , nonunique_cnt      
         
 spsolver =  shortestpath_solver()
 ###################################### Wrapper #########################################
@@ -170,21 +190,21 @@ class datawrapper():
 ###################################### Dataloader #########################################
 
 class ShortestPathDataModule(pl.LightningDataModule):
-    def __init__(self, train_df,valid_df,test_df,generator, batch_size: int = 32, num_workers: int=8):
+    def __init__(self, train_df,valid_df,test_df,generator, batchsize: int = 32, num_workers: int=8):
         super().__init__()
         self.train_df = train_df
         self.valid_df =  valid_df
         self.test_df = test_df
-        self.batch_size = batch_size
+        self.batchsize = batchsize
         self.generator =  generator
         self.num_workers = num_workers
 
 
     def train_dataloader(self):
-        return DataLoader(self.train_df, batch_size=self.batch_size,generator= self.generator, num_workers=self.num_workers)
+        return DataLoader(self.train_df, batch_size=self.batchsize,generator= self.generator, num_workers=self.num_workers)
 
     def val_dataloader(self):
-        return DataLoader(self.valid_df, batch_size=self.batch_size, num_workers=self.num_workers)
+        return DataLoader(self.valid_df, batch_size=self.batchsize,generator= self.generator, num_workers=self.num_workers)
 
     def test_dataloader(self):
         return DataLoader(self.test_df, batch_size=1000, num_workers=self.num_workers)
@@ -203,8 +223,7 @@ def regret_fn(solver, y_hat,y_true, sol_true, minimize= True):
     '''
     regret_list = []
     for ii in range(len(y_true)):
-        # regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii], sol_true[ii]) )
-        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii])[0] )
+        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii], sol_true[ii]) )
     return torch.mean( torch.tensor(regret_list ))
 
 def regret_aslist(solver, y_hat,y_true, sol_true, minimize= True):  
@@ -213,8 +232,7 @@ def regret_aslist(solver, y_hat,y_true, sol_true, minimize= True):
     ''' 
     regret_list = []
     for ii in range(len(y_true)):
-        # regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii], sol_true[ii]).item() )
-        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii]).item() )
+        regret_list.append( SPOLoss(solver, minimize)(y_hat[ii],y_true[ii], sol_true[ii]).item() )
     return np.array(regret_list)
 
 class twostage_regression(pl.LightningModule):
@@ -331,25 +349,44 @@ class twostage_regression(pl.LightningModule):
     #     if self.trainer.global_step % self.val_check_interval == 0:
     #         self.reduce_lr_on_plateau.step(self.current_val_loss)
 ###################################### SPO and Blackbox #########################################
+# def SPOLoss(solver, minimize=True):
+#     mm = 1 if minimize else -1
+#     class SPOLoss_cls(torch.autograd.Function):
+#         @staticmethod
+#         def forward(ctx, y_pred, y_true, sol_true):
+       
+#             sol_hat = solver.solution_fromtorch(y_pred)
+#             sol_spo = solver.solution_fromtorch(2* y_pred - y_true)
+#             # sol_true = solver.solution_fromtorch(y_true)
+#             ctx.save_for_backward(sol_spo,  sol_true, sol_hat)
+#             return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
+
+#         @staticmethod
+#         def backward(ctx, grad_output):
+#             sol_spo,  sol_true, sol_hat = ctx.saved_tensors
+#             return mm*(sol_true - sol_spo), None, None
+            
+#     return SPOLoss_cls.apply
 
 def SPOLoss(solver= spsolver, minimize=True):
     mm = 1 if minimize else -1
     class SPOLoss_cls(torch.autograd.Function):
         @staticmethod
-        def forward(ctx, y_pred, y_true):
+        def forward(ctx, y_pred, y_true, sol_true):
        
             sol_hat = solver.solution_fromtorch(y_pred)
             sol_spo = solver.solution_fromtorch(2* y_pred - y_true)
-            sol_true = solver.solution_fromtorch(y_true)
+            # sol_true = solver.solution_fromtorch(y_true)
             ctx.save_for_backward(sol_spo,  sol_true, sol_hat)
-            # return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
-            return mm*torch.mul((  sol_hat - sol_true) , y_true).sum()/ torch.mul(sol_true,y_true).sum(), sol_spo,  sol_true
+            return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
+            #return mm*torch.mul((  sol_hat - sol_true) , y_true).sum()/ torch.mul(sol_true,y_true).sum(), sol_spo,  sol_true
+            # return mm*torch.mul((  sol_hat - sol_true) , y_true).sum()/ torch.mul(sol_true,y_true).sum(), sol_spo,  sol_true
 
         @staticmethod
-        def backward(ctx, grad_output,grad_solspo,grad_soltrue):
+        def backward(ctx, grad_output): ##grad_solspo,grad_soltrue
             # print("grad_op",grad_output)
             sol_spo,  sol_true, sol_hat = ctx.saved_tensors
-            return mm*(sol_true - sol_spo)*grad_output, None
+            return mm*(sol_true - sol_spo), None, None
 
     return SPOLoss_cls.apply
 
@@ -412,7 +449,7 @@ class SPO(twostage_regression):
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
         for ii in range(len(y)):
             # loss += self.loss_fn(self.exact_solver)(y_hat[ii],y[ii], sol[ii])
-            loss += self.loss_fn(self.exact_solver)(y_hat[ii],y[ii])[0]
+            loss += self.loss_fn(self.exact_solver)(y_hat[ii],y[ii],sol[ii])
         training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )

@@ -26,7 +26,7 @@ normed_net = nn.Sequential(*net_layers)
 ############### Configuration
 N, noise, deg = 5000,0.5,4
 for noise in [0.0]:
-    for deg in [1,2]:
+    for deg in [4,6,8]:
         for mu in [1.]:
             ###################################### Hyperparams #########################################
             lr = 0.1

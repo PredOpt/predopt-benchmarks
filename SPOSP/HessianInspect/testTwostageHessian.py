@@ -5,6 +5,7 @@ import shutil
 from pytorch_lightning.callbacks import ModelCheckpoint 
 import random
 from pytorch_lightning import loggers as pl_loggers
+from torchviz import make_dot, make_dot_from_trace
 # from pyhessian import hessian
 # from density_plot import get_esd_plot
 torch.use_deterministic_algorithms(True)
@@ -26,7 +27,7 @@ net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
 net = nn.Linear(5,40)
 ############### Configuration
-N, noise, deg = 100,0.5,1
+N, noise, deg = 100,0.5,4
 
 ###################################### Hyperparams #########################################
 lr = 0.1
@@ -64,7 +65,7 @@ for i, (inputs, labels,sols) in enumerate(valid_dataloader):
     # if i == batch_num - 1:
     #     break
 
-for seed in range(3):
+for seed in range(5,7):
     seed_all(seed)
 
     g = torch.Generator()
@@ -83,7 +84,7 @@ for seed in range(3):
     
     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
     trainer = pl.Trainer(max_epochs= max_epochs,callbacks=[checkpoint_callback],  min_epochs=5, logger=tb_logger)
-    model = twostage_regression(net=normed_net, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
+    model = twostage_regression(net= normed_net, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
     criterion = nn.MSELoss()
         
     
@@ -91,12 +92,16 @@ for seed in range(3):
     trainer.fit(model, datamodule=data)
     best_model_path = checkpoint_callback.best_model_path
     model = twostage_regression.load_from_checkpoint(best_model_path,
-    net=normed_net, lr= lr, seed=seed)
+    net= normed_net, lr= lr, seed=seed)
+    # dot = make_dot(model.net(torch.from_numpy(x_valid).float()), params=dict(model.net.named_parameters()))
+    # print(dot)
+    # dot.format = 'png'
+    # dot.render("net")
     
     
     
     hessian_mat = hessian(model,criterion, x_valid,y_valid,
-    figname='Normed_N_{}_noise_{}_deg{}_seed{}'.format(N,noise,deg,seed))
+    figname='figures/TwostageNormed_N_{}_noise_{}_deg{}_seed{}'.format(N,noise,deg,seed))
     # eigen_plot(hessian_mat,figname='Normed_N_{}_noise_{}_deg{}_seed{}'.format(N,noise,deg,seed))
     
     
@@ -133,7 +138,7 @@ for seed in range(3):
 
     # ##### Summary
     
-    # validresult = trainer.validate(model,datamodule=data)
+    validresult = trainer.validate(model,datamodule=data)
     # testresult = trainer.test(model, datamodule=data)
     # df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
     # df ['model'] = 'Twostage'
@@ -144,5 +149,5 @@ for seed in range(3):
     # df['N'] = N
     # df['l1_weight'] = l1_weight
     # df['lr'] = lr
-    # # with open(outputfile, 'a') as f:
-    # #     df.to_csv(f, header=f.tell()==0)
+    # with open(outputfile, 'a') as f:
+    #     df.to_csv(f, header=f.tell()==0)

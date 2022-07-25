@@ -25,8 +25,8 @@ net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
 ############### Configuration
 N, noise, deg = 5000,0.5,4
-for noise in [0.5]:
-    for deg in [8]:
+for noise in [0.0]:
+    for deg in [2,4,6,8]:
         for input_noise_temperature in [1.]:
             ###################################### Hyperparams #########################################
             lr = 0.1
