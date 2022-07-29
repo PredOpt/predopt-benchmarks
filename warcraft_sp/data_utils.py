@@ -24,6 +24,7 @@ class WarcraftImageDataset(Dataset):
 
 class WarcraftDataModule(pl.LightningDataModule):
     def __init__(self, data_dir, use_test_set=True,  normalize=True, batch_size=70, generator=None,num_workers=4):
+        super().__init__()
         self.batch_size = batch_size
         self.generator = generator
         self.num_workers = num_workers
@@ -66,6 +67,20 @@ class WarcraftDataModule(pl.LightningDataModule):
         self.val_data = WarcraftImageDataset(val_inputs, val_labels, val_true_weights)
         if use_test_set:
             self.test_data = WarcraftImageDataset(test_inputs, test_labels, test_true_weights)
+
+        def denormalize(x):
+            return (x * std) + mean
+
+        self.metadata = {
+            "input_image_size": val_full_images[0].shape[1],
+            "output_features": val_true_weights[0].shape[0] * val_true_weights[0].shape[1],
+            "num_channels": val_full_images[0].shape[-1],
+            "denormalize": denormalize
+        }
+
+
+
+
     def train_dataloader(self):
         return DataLoader(self.training_data, batch_size=self.batch_size,generator= self.generator, num_workers=self.num_workers)
 

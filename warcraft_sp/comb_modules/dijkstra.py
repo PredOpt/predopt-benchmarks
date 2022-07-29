@@ -4,7 +4,7 @@ import torch
 from functools import partial
 from comb_modules.utils import get_neighbourhood_func
 from collections import namedtuple
-# from utils import maybe_parallelize
+from utils import maybe_parallelize
 
 DijkstraOutput = namedtuple("DijkstraOutput", ["shortest_path", "is_unique", "transitions"])
 
@@ -60,22 +60,24 @@ def get_solver(neighbourhood_fn):
 
     return solver
 
-
-class ShortestPath(torch.autograd.Function):
-    def __init__(self, lambda_val, neighbourhood_fn="8-grid"):
-        self.lambda_val = lambda_val
-        self.neighbourhood_fn = neighbourhood_fn
-        self.solver = get_solver(neighbourhood_fn)
-
-    def forward(self, weights):
-        self.weights = weights.detach().cpu().numpy()
-        self.suggested_tours = np.asarray(self.solver, arg_list=list(self.weights))
-        return torch.from_numpy(self.suggested_tours).float().to(weights.device)
-
-    def backward(self, grad_output):
-        assert grad_output.shape == self.suggested_tours.shape
-        grad_output_numpy = grad_output.detach().cpu().numpy()
-        weights_prime = np.maximum(self.weights + self.lambda_val * grad_output_numpy, 0.0)
-        better_paths = np.asarray(maybe_parallelize(self.solver, arg_list=list(weights_prime)))
-        gradient = -(self.suggested_tours - better_paths) / self.lambda_val
-        return torch.from_numpy(gradient).to(grad_output.device)
+def  ShortestPath( lambda_val, neighbourhood_fn="8-grid"):
+    solver = get_solver(neighbourhood_fn)
+    class ShortestPath_cls(torch.autograd.Function):
+        # def __init__(self, lambda_val, neighbourhood_fn="8-grid"):
+        #     self.lambda_val = lambda_val
+        #     self.neighbourhood_fn = neighbourhood_fn
+        
+        @staticmethod
+        def forward(self, weights):
+            self.weights = weights.detach().cpu().numpy()
+            self.suggested_tours = np.asarray (maybe_parallelize(solver, arg_list=list(self.weights)))
+            return torch.from_numpy(self.suggested_tours).float().to(weights.device)
+        @staticmethod
+        def backward(self, grad_output):
+            assert grad_output.shape == self.suggested_tours.shape
+            grad_output_numpy = grad_output.detach().cpu().numpy()
+            weights_prime = np.maximum(self.weights + lambda_val * grad_output_numpy, 0.0)
+            better_paths = np.asarray(maybe_parallelize( solver, arg_list=list(weights_prime)))
+            gradient = -(self.suggested_tours - better_paths) / lambda_val
+            return torch.from_numpy(gradient).to(grad_output.device)
+    return ShortestPath_cls.apply
