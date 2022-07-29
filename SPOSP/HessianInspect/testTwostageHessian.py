@@ -27,12 +27,12 @@ net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
 net = nn.Linear(5,40)
 ############### Configuration
-N, noise, deg = 100,0.5,4
+N, noise, deg = 100,0.5,8
 
 ###################################### Hyperparams #########################################
 lr = 0.1
 l1_weight = 1e-5
-batchsize  = 128
+batchsize  = 32
 max_epochs = 30
 
 ######################################  Data Reading #########################################

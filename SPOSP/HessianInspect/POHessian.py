@@ -27,6 +27,9 @@ def eigen_plot(hess,figname='example'):
     # plt.axis([np.min(eigenvalues) - 1, np.max(eigenvalues) + 1, None, None])
     plt.tight_layout()
     plt.savefig('{}.png'.format(figname))
+    plt.clf()
+    plt.cla()
+    plt.close()    
 def gradient_plot(grads,figname='example'):
     import matplotlib.pyplot as plt
     from numpy import linalg as LA
@@ -39,6 +42,9 @@ def gradient_plot(grads,figname='example'):
     # plt.axis([np.min(eigenvalues) - 1, np.max(eigenvalues) + 1, None, None])
     plt.tight_layout()
     plt.savefig('{}.png'.format(figname))    
+    plt.clf()
+    plt.cla()
+    plt.close()
 
 def hessian(model,criterion, x_data,y_data,figname='example'):
     '''
