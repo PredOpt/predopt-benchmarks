@@ -1,5 +1,6 @@
 from PO_modelsSP import *
 import pandas as pd
+from torch.utils.data import DataLoader
 import shutil
 from pytorch_lightning.callbacks import ModelCheckpoint 
 import random
@@ -15,10 +16,10 @@ def seed_all(seed):
     np.random.seed(seed)
     random.seed(seed)
 
-outputfile = "Rslt/Normed_SPO_rslt.csv"
-regretfile= "Rslt/Normed_SPO_Regret.csv"
-ckpt_dir =  "ckpt_dir/SPO/"
-log_dir = "lightning_logs/SPO/"
+outputfile = "Rslt/Normed_DPO_rslt.csv"
+regretfile= "Rslt/Normed_DPO_Regret.csv"
+ckpt_dir =  "ckpt_dir/DPO/"
+log_dir = "lightning_logs/DPO/"
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -26,14 +27,14 @@ net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
 
 ############### Configuration
-N, noise, deg = 5000,0.0,6
-
-for noise in [0.0,0.5]:
+N, noise, deg = 5000,0.0,8
+for deg in [4,6,8]:
     ###################################### Hyperparams #########################################
-    lr = 0.7
+    lr = 0.1
     l1_weight = 1e-5
     batchsize  = 128
-    max_epochs = 40
+    max_epochs = 30
+    sigma, num_samples= 2.,  1 
     ######################################  Data Reading #########################################
 
     Train_dfx= pd.read_csv("SyntheticData/TraindataX_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None)
@@ -74,11 +75,11 @@ for noise in [0.0,0.5]:
         
         tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
         trainer = pl.Trainer(max_epochs= max_epochs,callbacks=[checkpoint_callback],  min_epochs=5, logger=tb_logger)
-        model = SPO(net= normed_net, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
+        model = FenchelYoung(net= normed_net, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs,sigma=sigma, num_samples= num_samples)
         trainer.fit(model, datamodule=data)
         best_model_path = checkpoint_callback.best_model_path
-        model = SPO.load_from_checkpoint(best_model_path,
-        net= normed_net, lr= lr, l1_weight=l1_weight, seed=seed)
+        model = FenchelYoung.load_from_checkpoint(best_model_path,
+        net= normed_net, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs,sigma=sigma, num_samples= num_samples)
 
         y_pred = model(torch.from_numpy(x_test).float()).squeeze()
         sol_test =  batch_solve(spsolver, torch.from_numpy(y_test).float())
@@ -86,7 +87,7 @@ for noise in [0.0,0.5]:
 
         df = pd.DataFrame({"regret":regret_list})
         df.index.name='instance'
-        df ['model'] = 'SPO(batchnorm)'
+        df ['model'] = 'DPO(batchnorm)'
         df['seed'] = seed
         df ['batchsize'] = batchsize
         df ['noise'] = noise
@@ -95,6 +96,8 @@ for noise in [0.0,0.5]:
 
         df['l1_weight'] = l1_weight
         df['lr'] = lr
+        df['sigma'] =sigma
+        df['num_samples']= num_samples
         with open(regretfile, 'a') as f:
             df.to_csv(f, header=f.tell()==0)
 
@@ -103,7 +106,7 @@ for noise in [0.0,0.5]:
         validresult = trainer.validate(model,datamodule=data)
         testresult = trainer.test(model, datamodule=data)
         df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])    
-        df ['model'] = 'SPO(batchnorm)'
+        df ['model'] = 'DPO(batchnorm)'
         df['seed'] = seed
         df ['batchsize'] = batchsize
         df ['noise'] = noise
@@ -111,6 +114,8 @@ for noise in [0.0,0.5]:
         df['N'] = N
         df['l1_weight'] = l1_weight
         df['lr'] = lr
+        df['sigma'] =sigma
+        df['num_samples']= num_samples            
         with open(outputfile, 'a') as f:
             df.to_csv(f, header=f.tell()==0)
     ###############################  Save  Learning Curve Data ########
@@ -136,5 +141,5 @@ for noise in [0.0,0.5]:
 
     df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
     "val_mse": mses })
-    df['model'] ='SPO'
-    df.to_csv("LearningCurve/Normed_SPO_data_N_{}_noise_{}_deg_{}_lr{}.csv".format(N,noise,deg,lr))
+    df['model'] ='DPO'
+    df.to_csv("LearningCurve/Normed_DPO_data_N_{}_noise_{}_deg_{}_lr{}_sigma{}_numsamples{}.csv".format( N,noise,deg,lr, sigma, num_samples))
