@@ -232,7 +232,7 @@ class FenchelYoung(twostage_baseline):
         self.num_samples = num_samples
         solver =   get_solver(neighbourhood_fn)
         self.fy_solver = lambda weights: shortest_pathsolution(solver, weights)
-         ########### Like SPO, The gradient does not depend on the loss function  #################################
+        ########### Like SPO, The gradient does not depend on the loss function  #################################
         if loss=="hamming":
             self.loss_fn = HammingLoss()
         # if loss=="regret":
@@ -264,12 +264,15 @@ class DPO(twostage_baseline):
         self.sigma = sigma
         self.num_samples = num_samples
         solver =   get_solver(neighbourhood_fn)
-        self.fy_solver = lambda weights: shortest_pathsolution(solver, weights)
-         ########### Like SPO, The gradient does not depend on the loss function  #################################
+
+        # @perturbations.perturbed(num_samples=num_samples, sigma=sigma, noise='gumbel',batched = False)
+        self.dpo_solver = perturbations.perturbed(lambda weights: shortest_pathsolution(solver, -weights),
+        num_samples=num_samples, sigma=sigma, noise='gumbel',batched = True)
+
         if loss=="hamming":
             self.loss_fn = HammingLoss()
-        # if loss=="regret":
-        #     self.loss_fn = RegretLoss()
+        if loss=="regret":
+            self.loss_fn = RegretLoss()
 
     def forward(self,x):
         output = self.model(x)
@@ -277,15 +280,17 @@ class DPO(twostage_baseline):
         return relu_op(output)
 
     def training_step(self, batch, batch_idx):
-        criterion = fy.FenchelYoungLoss(self.fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = False, batched= True)
-
         input, label, true_weights = batch
         output = self(input)
         
         weights = output.reshape(-1, output.shape[-1], output.shape[-1])
         # shortest_path = self.comb_layer(weights, label, true_weights)
         
-        training_loss =  criterion(weights,label).mean()
+        # training_loss =  criterion(weights,label).mean()
+
+
+        shortest_path = self.dpo_solver(-weights)
+        training_loss = self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss  
 
