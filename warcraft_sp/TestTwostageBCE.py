@@ -41,10 +41,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/BaselineBCE{}_tag{}.csv".format(args.img_size, args.output_tag)
-ckpt_dir =  "ckpt_dir/BaselineBCE/"
-log_dir = "lightning_logs/BaselineBCE/"
-learning_curve_datafile = "LearningCurve/BaselineBCE{}_lr{}_batchsize{}_seed{}_tag{}".format(args.img_size,lr,batch_size,seed,args.output_tag)
+outputfile = "Rslt/BaselineBCE{}_index{}.csv".format(args.img_size, args.index)
+ckpt_dir =  "ckpt_dir/BaselineBCE_index{}/".format(args.index)
+log_dir = "lightning_logs/BaselineBCE_index{}/".format(args.index)
+learning_curve_datafile = "LearningCurve/BaselineBCE{}_lr{}_batchsize{}_seed{}_index{}".format(args.img_size,lr,batch_size,seed,args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
