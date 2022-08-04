@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+modelname=${1}
+imgsz=${2}
+lr=${3}
+lambda=${4}
+tag= ${5}
+id=${6}
+echo ${tag}
+
+source ~/.bashrc
+source warcraft_venv/bin/activate
+python Test${modelname}.py --img_size ${imgsz} --lambda_val ${lambda} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/blackboxrun_${id}.log
+exit 0
