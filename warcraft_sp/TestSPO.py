@@ -65,7 +65,9 @@ checkpoint_callback = ModelCheckpoint(
         filename="model-{epoch:02d}-{val_loss:.2f}",
         mode="min")
 tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
-trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
+# trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
+trainer = pl.Trainer( accelerator="gpu",  strategy="ddp",
+max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
 model =  SPO(metadata=metadata, lr=lr, seed=seed)
 trainer.fit(model, datamodule=data)
 best_model_path = checkpoint_callback.best_model_path
