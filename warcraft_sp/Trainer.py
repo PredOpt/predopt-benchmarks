@@ -56,7 +56,7 @@ class twostage_baseline(pl.LightningModule):
         if self.loss=="mse":
             criterion = nn.MSELoss(reduction='mean')
             flat_target = true_weights.view(true_weights.size()[0], -1)
-            training_loss = criterion(output, true_weights).mean()
+            training_loss = criterion(output,flat_target).mean()
         self.log("train_loss",training_loss ,  on_step=True, on_epoch=True, )
         return training_loss 
     def validation_step(self, batch, batch_idx):
