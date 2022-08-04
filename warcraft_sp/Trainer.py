@@ -48,12 +48,14 @@ class twostage_baseline(pl.LightningModule):
         output = self(input)
         # print("Output shape", output.shape)
         
-        flat_target = label.view(label.size()[0], -1)
+        
         if self.loss == "bce":
             criterion = nn.BCELoss()
+            flat_target = label.view(label.size()[0], -1)
             training_loss = criterion(output, flat_target.to(torch.float32)).mean()
         if self.loss=="mse":
             criterion = nn.MSELoss(reduction='mean')
+            flat_target = true_weights.view(true_weights.size()[0], -1)
             training_loss = criterion(output, true_weights).mean()
         self.log("train_loss",training_loss ,  on_step=True, on_epoch=True, )
         return training_loss 

@@ -1,4 +1,4 @@
-############
+	############
 #
 # Example submit file for vanilla job
 #
@@ -15,8 +15,8 @@ Executable     = ./batch_run.sh
 Arguments      = $(a) $(b) $(c) $(d)
 
 input   = /dev/null
-#output  = ./out/batch_runs_$(d).out
-error    = ./err/batch_runs_$(d).error
-log       = ./log/batch_runs_$(d).condor_log
+#output  = ./out/batch_runs4aug_$(d).out
+error    = ./err/batch_runs4aug_$(d).error
+log       = ./log/batch_runs4aug_$(d).condor_log
 
 Queue a,b,c,d from batch_run.in

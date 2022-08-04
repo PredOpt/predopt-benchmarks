@@ -2,3 +2,6 @@ SPO,24,spo_mserun4aug,1
 SPO,30,spo_mserun4aug,2
 TwostageMSE,24,spo_mse,3
 TwostageMSE,30,spo_mse,4
+SPO,12,spo_mserun4aug,5
+TwostageMSE,12,spo_mse,6
+TwostageMSE,18,spo_mse,7
