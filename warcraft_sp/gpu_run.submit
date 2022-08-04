@@ -5,8 +5,8 @@
 ############
 
 #getenv = True
-#request_cpus = 4
-request_memory = 64 GB
+request_cpus = 4
+request_memory = 32 GB
 
 Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413_gpu"
 +request_gpus = 1
