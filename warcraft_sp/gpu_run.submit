@@ -1,0 +1,23 @@
+############
+#
+# Example submit file for vanilla job
+#
+############
+
+#getenv = True
+#request_cpus = 4
+request_memory = 64 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413_gpu"
++request_gpus = 1
+
+Universe       = vanilla
+Executable     = ./gpu_run.sh
+Arguments      = $(a) $(b) $(c) $(d)
+
+input   = /dev/null
+#output  = ./out/gpu_runs_$(d).out
+error    = ./err/gpu_runs_$(d).error
+log       = ./log/gpu_runs_$(d).condor_log
+
+Queue a,b,c,d from gpu_run.in
