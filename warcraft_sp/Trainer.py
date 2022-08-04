@@ -217,7 +217,7 @@ class SPO(twostage_baseline):
         weights = output.reshape(-1, output.shape[-1], output.shape[-1])
         ### For SPO, we need the true weights as we have to compute 2*\hat{c} - c
         shortest_path = self.comb_layer(weights, label, true_weights)
-        training_loss = self.loss_fn(shortest_path, label)
+        training_loss = self.loss_fn(shortest_path, label,  true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
