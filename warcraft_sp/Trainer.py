@@ -55,7 +55,7 @@ class twostage_baseline(pl.LightningModule):
             training_loss = criterion(output, flat_target.to(torch.float32)).mean()
         if self.loss=="mse":
             criterion = nn.MSELoss(reduction='mean')
-            flat_target = true_weights.view(true_weights.size()[0], -1)
+            flat_target = true_weights.view(true_weights.size()[0], -1).type_as(true_weights)
             training_loss = criterion(output,flat_target).mean()
         self.log("train_loss",training_loss ,  on_step=True, on_epoch=True, )
         return training_loss 

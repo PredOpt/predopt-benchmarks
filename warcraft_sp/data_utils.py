@@ -43,7 +43,7 @@ class WarcraftDataModule(pl.LightningDataModule):
             test_inputs = test_inputs.transpose(0, 3, 1, 2)  # channel first
 
         train_labels = np.load(os.path.join(data_dir, train_prefix + "_shortest_paths.npy"))
-        train_true_weights = np.load(os.path.join(data_dir, train_prefix + "_vertex_weights.npy"))
+        train_true_weights = np.load(os.path.join(data_dir, train_prefix + "_vertex_weights.npy")).astype(np.float32)
         if normalize:
             mean, std = (
                 np.mean(train_inputs, axis=(0, 2, 3), keepdims=True),
@@ -57,12 +57,12 @@ class WarcraftDataModule(pl.LightningDataModule):
                 test_inputs -= mean
                 test_inputs /= std    
         val_labels = np.load(os.path.join(data_dir, val_prefix + "_shortest_paths.npy"))
-        val_true_weights = np.load(os.path.join(data_dir, val_prefix + "_vertex_weights.npy"))
+        val_true_weights = np.load(os.path.join(data_dir, val_prefix + "_vertex_weights.npy")).astype(np.float32)
         val_full_images = np.load(os.path.join(data_dir, val_prefix + "_maps.npy"))  
         if use_test_set:
             test_labels = np.load(os.path.join(data_dir, test_prefix + "_shortest_paths.npy"))
-            test_true_weights = np.load(os.path.join(data_dir, test_prefix + "_vertex_weights.npy"))
-            test_full_images = np.load(os.path.join(data_dir, test_prefix + "_maps.npy"))
+            test_true_weights = np.load(os.path.join(data_dir, test_prefix + "_vertex_weights.npy")).astype(np.float32)
+            # test_full_images = np.load(os.path.join(data_dir, test_prefix + "_maps.npy"))
         self.training_data = WarcraftImageDataset(train_inputs, train_labels, train_true_weights)
         self.val_data = WarcraftImageDataset(val_inputs, val_labels, val_true_weights)
         if use_test_set:
