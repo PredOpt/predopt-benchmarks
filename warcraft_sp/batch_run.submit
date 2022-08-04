@@ -1,0 +1,22 @@
+############
+#
+# Example submit file for vanilla job
+#
+############
+
+getenv = True
+request_cpus = 8
+request_memory = 64 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
+
+Universe       = vanilla
+Executable     = ./batch_run.sh
+Arguments      = $(a) $(b) $(c) $(d)
+
+input   = /dev/null
+#output  = ./out/batch_runs_$(d).out
+error    = ./err/batch_runs_$(d).error
+log       = ./log/batch_runs_$(d).condor_log
+
+Queue a,b,c,d from batch_run.in

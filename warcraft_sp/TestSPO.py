@@ -1,6 +1,6 @@
 import argparse
 from data_utils import WarcraftDataModule
-from Trainer import twostage_baseline
+from Trainer import *
 import pytorch_lightning as pl
 import pandas as pd
 import numpy as np
@@ -11,6 +11,7 @@ from pytorch_lightning import loggers as pl_loggers
 import os
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 from pytorch_lightning.callbacks import ModelCheckpoint 
+from pytorch_lightning.callbacks import ModelCheckpoint 
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--img_size", type=int, help="size of image in one dimension", default= 12)
@@ -20,7 +21,6 @@ parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
 parser.add_argument("--max_epochs", type=int, help="maximum bumber of epochs", default= 50, required=False)
 parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=False)
 parser.add_argument("--index", type=int, help="index", default= 50, required=False)
-
 args = parser.parse_args()
 
 torch.use_deterministic_algorithms(True)
@@ -41,10 +41,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/BaselineBCE{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/BaselineBCE_index{}/".format(args.index)
-log_dir = "lightning_logs/BaselineBCE_index{}/".format(args.index)
-learning_curve_datafile = "LearningCurve/BaselineBCE{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,lr,batch_size,seed,args.index)
+outputfile = "Rslt/SPO{}_index{}.csv".format(args.img_size, args.index)
+ckpt_dir =  "ckpt_dir/SPO/"
+log_dir = "lightning_logs/SPO/"
+learning_curve_datafile = "LearningCurve/SPO{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -64,20 +64,22 @@ checkpoint_callback = ModelCheckpoint(
         dirpath=ckpt_dir, 
         filename="model-{epoch:02d}-{val_loss:.2f}",
         mode="min")
-
 tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
 trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
-model =  twostage_baseline(metadata=metadata, lr=lr, seed=seed,loss="bce")
+model =  SPO(metadata=metadata, lr=lr, seed=seed)
 trainer.fit(model, datamodule=data)
 best_model_path = checkpoint_callback.best_model_path
-model = twostage_baseline.load_from_checkpoint(best_model_path,
-    metadata=metadata, lr=lr, seed=seed,loss="bce")
+model = SPO.load_from_checkpoint(best_model_path,
+    metadata=metadata, lr=lr, seed=seed)
+
+
+
 
 ##### SummaryWrite ######################
 validresult = trainer.validate(model,datamodule=data)
 testresult = trainer.test(model, datamodule=data)
 df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
-df ['model'] = 'BaselineBCE'
+df ['model'] = 'SPO'
 df['seed'] = seed
 df ['batch_size'] = batch_size
 df['lr'] =lr
@@ -105,5 +107,5 @@ for logs in version_dirs:
 
 df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
-df['model'] ='BaselineBCE'
+df['model'] ='SPO'
 df.to_csv(learning_curve_datafile,index=False)
