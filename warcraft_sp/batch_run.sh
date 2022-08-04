@@ -3,7 +3,7 @@
 modelname=${1}
 imgsz=${2}
 lr=${3}
-tag= ${3}
+tag= ${4}
 id=${5}
 
 

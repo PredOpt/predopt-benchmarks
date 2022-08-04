@@ -1,17 +1,14 @@
 TwostageBCE,12,1e-3,aug4runevning,1
-SPO,30,1e-3,aug4runevning,2
 BlackboxHamming,12,1e-3,aug4runevning,3
 BlackboxRegret,12,1e-3,aug4runevning,4
 FY,12,1e-3,aug4runevning,5
 DPORegret,12,1e-3,aug4runevning,6
 TwostageBCE,12,5e-3,aug4runevning,7
-SPO,30,5e-3,aug4runevning,8
 BlackboxHamming,12,5e-3,aug4runevning,9
 BlackboxRegret,12,5e-3,aug4runevning,10
 FY,12,5e-3,aug4runevning,11
 DPORegret,12,5e-3,aug4runevning,12
 TwostageBCE,12,5e-4,aug4runevning,13
-SPO,30,5e-4,aug4runevning,14
 BlackboxHamming,12,5e-4,aug4runevning,15
 BlackboxRegret,12,5e-4,aug4runevning,16
 FY,12,5e-4,aug4runevning,17
