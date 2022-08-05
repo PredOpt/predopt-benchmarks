@@ -11,7 +11,9 @@ from comb_modules.dijkstra import get_solver, shortest_pathsolution
 from metric import normalized_regret
 from DPO import perturbations
 from DPO import fenchel_young as fy
-
+from imle.wrapper import imle
+from imle.target import TargetDistribution
+from imle.noise import SumOfGammaNoiseDistribution
 
 class twostage_baseline(pl.LightningModule):
     def __init__(self, metadata, model_name= "ResNet18", arch_params={}, neighbourhood_fn =  "8-grid",
@@ -258,6 +260,46 @@ class FenchelYoung(twostage_baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss      
 
+class IMLE(twostage_baseline):
+    def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
+        lr=1e-1, seed=20,loss="hamming",k=5, nb_iterations=100,nb_samples=1, 
+            input_noise_temperature=1.0, target_noise_temperature=1.0 ):
+        super().__init__(metadata, model_name, arch_params, neighbourhood_fn, lr,  seed,loss)
+        solver =   get_solver(neighbourhood_fn)
+
+        target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
+        noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
+
+        # @perturbations.perturbed(num_samples=num_samples, sigma=sigma, noise='gumbel',batched = False)
+        self.imle_solver = imle(lambda weights: shortest_pathsolution(solver, -weights),
+        target_distribution=target_distribution,noise_distribution=noise_distribution,
+        input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, nb_samples= nb_samples)
+
+        if loss=="hamming":
+            self.loss_fn = HammingLoss()
+        if loss=="regret":
+            self.loss_fn = RegretLoss()
+
+    def forward(self,x):
+        output = self.model(x)
+        relu_op = nn.ReLU()
+        return relu_op(output)
+
+    def training_step(self, batch, batch_idx):
+        input, label, true_weights = batch
+        output = self(input)
+        
+        weights = output.reshape(-1, output.shape[-1], output.shape[-1])
+        # shortest_path = self.comb_layer(weights, label, true_weights)
+        
+        # training_loss =  criterion(weights,label).mean()
+
+
+        shortest_path = self.imle_solver(-weights)
+        training_loss = self.loss_fn(shortest_path, label, true_weights)
+        self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
+        return training_loss  
+
 class DPO(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, seed=20,loss="hamming",sigma=0.1,num_samples=10 ):
@@ -294,7 +336,5 @@ class DPO(twostage_baseline):
         shortest_path = self.dpo_solver(-weights)
         training_loss = self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
-        return training_loss  
-
-
+        return training_loss 
 

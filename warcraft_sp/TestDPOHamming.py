@@ -19,7 +19,7 @@ parser.add_argument("--batch_size", type=int, help="batch size", default= 128, r
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
 parser.add_argument("--max_epochs", type=int, help="maximum bumber of epochs", default= 50, required=False)
 parser.add_argument("--sigma", type=float, help="sigma parameter", default= 1., required=False)
-parser.add_argument("--num_samples", type=int, help="learning rate", default= 2, required=False)
+parser.add_argument("--num_samples", type=int, help="number of samples", default= 2, required=False)
 parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=False)
 parser.add_argument("--index", type=int, help="index", default= 1, required=False)
 
