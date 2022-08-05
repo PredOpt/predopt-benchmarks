@@ -296,6 +296,7 @@ class IMLE(twostage_baseline):
 
 
         shortest_path = self.imle_solver(-weights)
+        print("IMLE shape check",label.shape, shortest_path.shape )
         training_loss = self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss  
