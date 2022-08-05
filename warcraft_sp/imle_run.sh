@@ -3,13 +3,13 @@
 modelname=${1}
 imgsz=${2}
 inptemp=${3}
-trgttemp=${5}
-nsamp=${6}
-niter=${7}
-k=${8}
-lr=${9}
-tag= ${10}
-id=${11}
+trgttemp=${4}
+nsamp=${5}
+niter=${6}
+k=${7}
+lr=${8}
+tag= ${9}
+id=${10}
 
 source ~/.bashrc
 source warcraft_venv/bin/activate
