@@ -12,8 +12,6 @@ IMLERegret,12,10.,1.,10,10,10,1e-3,imle,11
 IMLEHamming,12,10,1.,10,10,10,1e-3,imle,12
 IMLERegret,12,2.,10.,10,10,10,1e-3,imle,13
 IMLEHamming,12,2.,10.,10,10,10,1e-3,imle,14
-IMLERegret,12,1.,1.,1,10,10,1e-3,imle,13
-IMLEHamming,12,1,1.,1,10,10,1e-3,imle,14
 IMLERegret,12,1.,1.,10,1,10,1e-3,imle,15
 IMLEHamming,12,1,1.,10,1,10,1e-3,imle,16
 IMLERegret,18,1.,1.,10,10,10,1e-3,imle,17
@@ -32,3 +30,5 @@ IMLERegret,24,1.,1.,1,1,10,1e-3,imle,29
 IMLEHamming,24,1.,1.,1,1,10,1e-3,imle,30
 IMLERegret,24,2.,1.,1,1,10,1e-3,imle,31
 IMLEHamming,24,2.,1.,1,1,10,1e-3,imle,32
+IMLERegret,12,1.,1.,1,10,10,1e-3,imle,33
+IMLEHamming,12,1,1.,1,10,10,1e-3,imle,34
