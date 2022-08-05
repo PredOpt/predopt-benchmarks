@@ -5,7 +5,7 @@
 ############
 
 getenv = True
-request_cpus = 12
+request_cpus = 8
 request_memory = 64 GB
 
 Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
