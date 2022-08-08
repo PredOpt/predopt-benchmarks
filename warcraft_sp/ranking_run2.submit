@@ -11,7 +11,7 @@ request_memory = 36 GB
 Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
-Executable     = ./ranking_run.sh
+Executable     = ./ranking_run2.sh
 Arguments      = $(modelname) $(imgsz) $(tau) $(growth) $(lr) $(tag) $(id)
 
 input   = /dev/null
