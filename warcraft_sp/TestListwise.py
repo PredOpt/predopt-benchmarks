@@ -46,8 +46,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/Listwise{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/Listwise/"
-log_dir = "lightning_logs/Listwise/"
+ckpt_dir =  "ckpt_dir/Listwise{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/Listwise{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/Listwise{}_growth{}_tau{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,growth,tau, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 

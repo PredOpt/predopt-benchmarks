@@ -44,8 +44,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/Pairwisediff{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/Pairwisediff/"
-log_dir = "lightning_logs/Pairwisediff/"
+ckpt_dir =  "ckpt_dir/Pairwisediff{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/Pairwisediff{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/Pairwisediff{}_growth{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, growth,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 

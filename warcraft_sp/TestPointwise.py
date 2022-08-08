@@ -44,8 +44,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/Pointwise{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/Pointwise/"
-log_dir = "lightning_logs/Pointwise/"
+ckpt_dir =  "ckpt_dir/Pointwise{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/Pointwise{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/Pointwise{}_growth{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, growth,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
