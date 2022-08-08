@@ -11,5 +11,5 @@ echo ${tag}
 
 source ~/.bashrc
 source warcraft_venv/bin/activate
-python Test${modelname}.py --img_size ${imgsz} --tau${tau} --growth ${growth} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/Rankingrun2_${id}.log
+python Test${modelname}.py --img_size ${imgsz} --tau ${tau} --growth ${growth} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/Rankingrun2_${id}.log
 exit 0
