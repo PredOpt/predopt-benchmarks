@@ -1,5 +1,5 @@
 import argparse
-from data_utils import WarcraftDataModule
+from data_utils import WarcraftDataModule,return_trainlabel
 from Trainer import *
 import pytorch_lightning as pl
 import pandas as pd
@@ -15,11 +15,11 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--img_size", type=int, help="size of image in one dimension", default= 12)
+parser.add_argument("--growth", type=float, help="Growth", default= 0.01, required=False)
 parser.add_argument("--lr", type=float, help="learning rate", default= 5e-4, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
 parser.add_argument("--max_epochs", type=int, help="maximum bumber of epochs", default= 50, required=False)
-parser.add_argument("--lambda_val", type=float, help="Blacbox interploation lambda paraemter", default= 20., required=False)
 parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=False)
 parser.add_argument("--index", type=int, help="index", default= 50, required=False)
 args = parser.parse_args()
@@ -36,17 +36,17 @@ def seed_all(seed):
 ############### Configuration
 img_size = "{}x{}".format(args.img_size, args.img_size)
 ###################################### Hyperparams #########################################
-lambda_val= args.lambda_val
 lr = args.lr
+growth = args.growth
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/BlackboxRegret{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/BlackboxRegret/"
-log_dir = "lightning_logs/BlackboxRegret/"
-learning_curve_datafile = "LearningCurve/BlackboxRegret{}_lambdaval{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lambda_val,lr,batch_size,seed, args.index)
+outputfile = "Rslt/Pairwisediff{}_index{}.csv".format(args.img_size, args.index)
+ckpt_dir =  "ckpt_dir/Pairwisediff/"
+log_dir = "lightning_logs/Pairwisediff/"
+learning_curve_datafile = "LearningCurve/Pairwisediff{}_growth{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, growth,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -60,6 +60,8 @@ g.manual_seed(seed)
 data = WarcraftDataModule(data_dir="data/warcraft_shortest_path/{}".format(img_size), batch_size=batch_size, generator=g)
 metadata = data.metadata
 
+cache = return_trainlabel(data_dir="data/warcraft_shortest_path/{}".format(img_size))
+
 shutil.rmtree(ckpt_dir,ignore_errors=True)
 checkpoint_callback = ModelCheckpoint(
         monitor="val_regret",
@@ -68,11 +70,11 @@ checkpoint_callback = ModelCheckpoint(
         mode="min")
 tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
 trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
-model =  Blackbox(metadata=metadata,lambda_val=lambda_val, lr=lr, seed=seed,loss="regret")
+model =  CachingPO(metadata=metadata,lr=lr, seed=seed,init_cache=cache, growth= growth,loss= "pairwise_diff")
 trainer.fit(model, datamodule=data)
 best_model_path = checkpoint_callback.best_model_path
-model = Blackbox.load_from_checkpoint(best_model_path,
-    metadata=metadata,lambda_val=lambda_val, lr=lr, seed=seed,loss="regret")
+model = CachingPO.load_from_checkpoint(best_model_path,
+    metadata=metadata,lr=lr, seed=seed,init_cache=cache, growth= growth,loss= "pairwise_diff")
 
 
 
@@ -81,11 +83,13 @@ model = Blackbox.load_from_checkpoint(best_model_path,
 validresult = trainer.validate(model,datamodule=data)
 testresult = trainer.test(model, datamodule=data)
 df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
-df ['model'] = 'BlackboxRegret'
-df['lambda_val'] = lambda_val
+df ['model'] = 'Pairwisediff'
+df['growth'] = growth
 df['seed'] = seed
 df ['batch_size'] = batch_size
 df['lr'] =lr
+
+
 with open(outputfile, 'a') as f:
     df.to_csv(f, header=f.tell()==0)
 
@@ -110,5 +114,5 @@ for logs in version_dirs:
 
 df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
-df['model'] ='BlackboxRegret'
+df['model'] ='Pairwisediff'
 df.to_csv(learning_curve_datafile,index=False)

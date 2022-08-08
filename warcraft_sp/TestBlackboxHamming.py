@@ -46,7 +46,7 @@ seed = args.seed
 outputfile = "Rslt/BlackboxHamming{}_index{}.csv".format(args.img_size, args.index)
 ckpt_dir =  "ckpt_dir/BlackboxHamming/"
 log_dir = "lightning_logs/BlackboxHamming/"
-learning_curve_datafile = "LearningCurve/BlackboxHamming{}_lambdaval_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,lambda_val,lr,batch_size,seed, args.index)
+learning_curve_datafile = "LearningCurve/BlackboxHamming{}_lambdaval{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,lambda_val,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 

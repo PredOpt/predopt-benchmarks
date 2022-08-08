@@ -1,0 +1,22 @@
+	############
+#
+# Example submit file for vanilla job
+#
+############
+
+getenv = True
+request_cpus = 20
+request_memory = 36 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
+
+Universe       = vanilla
+Executable     = ./ranking_run.sh
+Arguments      = $(modelname) $(imgsz) $(growth) $(lr) $(tag) $(id)
+
+input   = /dev/null
+#output  = ./out/img12run_$(id).out
+error    = ./err/rankingrun1_$(id).error
+log       = ./log/rankingrun1_$(id).condor_log
+
+Queue modelname,imgsz,growth,lr,tag,id from ranking_run1.in

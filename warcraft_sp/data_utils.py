@@ -2,6 +2,7 @@ import numpy as np
 import os
 from torch.utils.data import Dataset, DataLoader
 import pytorch_lightning as pl
+import torch
 
 class WarcraftImageDataset(Dataset):
     def __init__(self, inputs, labels, true_weights):
@@ -13,14 +14,16 @@ class WarcraftImageDataset(Dataset):
         return len(self.labels)
 
     def __getitem__(self, idx):
-        # img_path = os.path.join(self.img_dir, self.img_labels.iloc[idx, 0])
-        # image = read_image(img_path)
-        # label = self.img_labels.iloc[idx, 1]
-        # if self.transform:
-        #     image = self.transform(image)
-        # if self.target_transform:
-        #     label = self.target_transform(label)
+
         return self.inputs[idx], self.labels[idx], self.true_weights[idx]
+
+def return_trainlabel(data_dir):
+    train_prefix = "train"
+
+    train_labels = np.load(os.path.join(data_dir, train_prefix + "_shortest_paths.npy")) 
+    train_labels = np.unique(train_labels,axis=0)   
+    return torch.from_numpy(train_labels)
+
 
 class WarcraftDataModule(pl.LightningDataModule):
     def __init__(self, data_dir, use_test_set=True,  normalize=True, batch_size=70, generator=None,num_workers=4):

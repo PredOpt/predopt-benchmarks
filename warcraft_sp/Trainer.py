@@ -1,11 +1,12 @@
 import imp
 import pytorch_lightning as pl
 import torch 
+import numpy as np
 from torch import nn, optim
 from torch.autograd import Variable
 import torch.nn.functional as F
 from computervisionmodels import get_model
-from comb_modules.losses import HammingLoss, RegretLoss
+from comb_modules.losses import *
 from diff_layer import BlackboxDifflayer,SPOlayer
 from comb_modules.dijkstra import get_solver, shortest_pathsolution
 from metric import normalized_regret
@@ -338,3 +339,68 @@ class DPO(twostage_baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
+from comb_modules.dijkstra import growcache
+class CachingPO(twostage_baseline):
+    def __init__(self, metadata,init_cache,tau=0.,growth=0.1, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
+        lr=1e-1, seed=20,loss="pointwise"):
+        """
+        A class to implement loss functions using soluton cache
+        Args:
+            loss_fn: the loss function (NCE, MAP or the rank-based ones)
+            init_cache: initial solution cache
+            growth: p_solve
+            tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
+        """
+        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
+        lr,  seed,loss)
+        if loss=="pointwise":
+            self.loss_fn = PointwiseLoss()
+        if loss=="pairwise":
+            self.loss_fn = PairwiseLoss(tau=tau)
+        if loss == "pairwise_diff":
+            self.loss_fn = PairwisediffLoss()
+        if loss == "listwise":
+            self.loss_fn = ListnetLoss(tau=tau)
+        ## The cache
+        # init_cache_np = init_cache.detach().numpy()
+        # init_cache_np = np.unique(init_cache_np,axis=0)
+        # # torch has no unique function, so we have to do this
+        self.cache = init_cache
+        self.growth = growth
+        self.tau = tau
+        self.save_hyperparameters("lr","growth","tau")
+
+    def forward(self,x):
+        output = self.model(x)
+        relu_op = nn.ReLU()
+        return relu_op(output)
+
+    def training_step(self, batch, batch_idx):
+        input, label, true_weights = batch
+        output = self(input)
+        if (np.random.random(1)[0]<= self.growth) or len(self.cache)==0:
+            self.cache = growcache(self.solver, self.cache, output)
+            
+
+        training_loss = self.loss_fn(output, true_weights, label ,self.cache)
+
+
+        # shortest_path = self.dpo_solver(-weights)
+        # training_loss = self.loss_fn(shortest_path, label, true_weights)
+        # self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
+        return training_loss    
+ 
+    # def training_step(self, batch, batch_idx):
+    #     x,y, sol = batch
+    #     y_hat =  self(x).squeeze()
+    #     if (np.random.random(1)[0]<= self.growth) or len(self.cache)==0:
+    #         self.cache = growcache(self.exact_solver, self.cache, y_hat)
+
+  
+    #     loss = self.loss_fn(y_hat,y,sol,self.cache, self.tau)
+    #     l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
+    #     training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+    #     self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+    #     self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
+    #     self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
+    #     return training_loss 
