@@ -26,9 +26,9 @@ net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
 
 ############### Configuration
-N, noise, deg = 5000,0.0,6
+N, noise, deg = 100,0.0,6
 
-for noise in [0.0,0.5]:
+for deg in [1,2,4,6,8]:
     ###################################### Hyperparams #########################################
     lr = 0.7
     l1_weight = 1e-5
