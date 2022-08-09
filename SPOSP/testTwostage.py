@@ -23,10 +23,10 @@ shutil.rmtree(log_dir,ignore_errors=True)
 net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
 ############### Configuration
-N, noise, deg = 5000,0.0,6
-for deg in [1,2]:
+N, noise, deg = 5000,0.5,6
+for deg in [1,2,4,6,8]:
     ###################################### Hyperparams #########################################
-    lr = 0.1
+    lr = 0.7
     l1_weight = 1e-5
     batchsize  = 128
     max_epochs = 30
