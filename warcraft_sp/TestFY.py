@@ -45,8 +45,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/FenchelYoung{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/FenchelYoung/"
-log_dir = "lightning_logs/FenchelYoung/"
+ckpt_dir =  "ckpt_dir/FenchelYoung{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/FenchelYoung{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/FenchelYoung{}_lr{}_batchsize{}_sigma{}_numsamples{}_seed{}_index{}.csv".format(args.img_size,
 lr,batch_size,sigma ,num_samples, seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)

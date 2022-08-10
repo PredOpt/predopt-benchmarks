@@ -45,8 +45,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/DPOHamming{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/DPOHamming_index{}/".format(args.index)
-log_dir = "lightning_logs/DPOHamming_index{}/".format(args.index)
+ckpt_dir =  "ckpt_dir/DPOHamming{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/DPOHamming{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/DPOHamming{}_lr{}_batchsize{}_sigma{}_numsamples{}_seed{}_index{}.csv".format(args.img_size,lr,batch_size,sigma ,num_samples, seed,args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 

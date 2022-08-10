@@ -44,8 +44,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/BlackboxRegret{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/BlackboxRegret/"
-log_dir = "lightning_logs/BlackboxRegret/"
+ckpt_dir =  "ckpt_dir/BlackboxRegret{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/BlackboxRegret{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/BlackboxRegret{}_lambdaval{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lambda_val,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 

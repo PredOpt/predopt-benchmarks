@@ -50,8 +50,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/IMLERegret{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/IMLERegret_index{}/".format(args.index)
-log_dir = "lightning_logs/IMLERegret_index{}/".format(args.index)
+ckpt_dir =  "ckpt_dir/IMLERegret{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/IMLERegret{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/IMLERegret{}_inptmp_{}trgttmp_{}_lr{}_batchsize{}_numsamples{}_numiter{}_seed{}_index{}.csv".format(args.img_size,input_noise_temperature, target_noise_temperature,lr,batch_size,nb_samples,nb_iterations, seed,args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
