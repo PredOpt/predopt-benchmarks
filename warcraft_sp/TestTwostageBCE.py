@@ -42,8 +42,8 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/BaselineBCE{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/BaselineBCE_index{}/".format(args.index)
-log_dir = "lightning_logs/BaselineBCE_index{}/".format(args.index)
+ckpt_dir =  "ckpt_dir/BaselineBCE{}_index{}/".format(args.img_size, args.index)
+log_dir = "lightning_logs/BaselineBCE{}_index{}/".format(args.img_size, args.index)
 learning_curve_datafile = "LearningCurve/BaselineBCE{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,lr,batch_size,seed,args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
