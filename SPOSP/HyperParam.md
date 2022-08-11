@@ -18,7 +18,7 @@
             <td>100</td>
             <td >lr=0.1</td>
             <td >lr=0.1</td>
-            <td >lr, lambda =0.1,1</td>
+            <td >lr, lambda =<span style="color: red">0.1</span>,10</td>
             <td >lr, inp,target,k = <span style="color: red">0.1</span>, 2, 1, 5</td>
             <td >lr, sigma  = <span style="color: red">0.1</span>, 2,</td>
             <td ></td>
@@ -26,15 +26,15 @@
             <td>1000</td>
             <td >lr=0.1</td>
             <td ><span style="color: blue"> lr=0.1 </span></td>
-            <td ><span style="color: blue"> lr, lambda =0.1,1 </span></td>
+            <td ><span style="color: red"> lr, lambda =0.1,1 </span></td>
             <td >lr, inp,target,k = <span style="color: red">0.1</span>, 0.1, 1, 5</td>
             <td >lr, sigma  = <span style="color: red">0.1</span>, <span style="color: blue">2</span></td>
             <td ></td>
         <tr>
             <td>5000</td>
-            <td ><span style="color: red"> lr=0.5 </span></td>
+            <td > lr=0.1 </td>
             <td ><span style="color: blue"> lr=0.1 </span></td>
-            <td ><span style="color: blue"> lr, lambda =0.1,1 </span></td>
+            <td ><span style="color: red"> lr, lambda =0.1,1 </span></td>
             <td >lr, inp,target,k = <span style="color: red">0.1</span>, 0.1, 1, 5</td>
             <td >lr, sigma  = <span style="color: red">0.1</span>, <span style="color: blue">2</span></td>
         </tr>
@@ -43,7 +43,7 @@
             <td>100</td>
             <td >lr=0.1</td>
             <td>lr=0.7</td>
-            <td >lr, lambda =0.1,1</td>
+            <td >lr, lambda =<span style="color: red">0.1</span>,10</td>
             <td >lr, inp,target,k = <span style="color: red">0.1</span> 2, 1, 5</td>
             <td >lr, sigma  = <span style="color: red">0.1</span>, 2,</td>
             </tr>
@@ -51,15 +51,15 @@
             <td>1000</td>
             <td >lr=0.1</td>
             <td >lr=0.1</td>
-            <td ><span style="color: blue"> lr, lambda =0.1,1 </span></td>   
+            <td ><span style="color: red"> lr, lambda =0.1,1 </span></td>   
             <td >lr, inp,target,k = <span style="color: red">0.1</span>, 0.1, 1, 5</td> 
             <td >lr, sigma  = <span style="color: red">0.1</span>, <span style="color: blue">2</span></td>
             </tr>
             <tr>
             <td>5000</td>
-            <td ><span style="color: red"> lr=0.5 </span></td>
+            <td > lr=0.1 </td>
             <td ><span style="color: blue"> lr=0.1 </span></td>
-            <td ><span style="color: blue"> lr, lambda =0.1,1 </span></td>
+            <td ><span style="color: red"> lr, lambda =0.1,1 </span></td>
             <td >lr, inp,target,k = <span style="color: red">0.1, 1.</span>, 1, 5</td>
             <td >lr, sigma  = <span style="color: red">0.1</span>, <span style="color: blue">2</span></td>
         </tr>
@@ -154,7 +154,7 @@
             <td > lr=0.1 </td>
             <td >lr, lambda =0.1,0.1</td>
             <td >lr, inp,target,k = <span style="color: blue">0.1, 0.1</span>, 1, 5</td>
-            <td >lr, sigma  = <span style="color: red">0.1, 2</span></td>
+            <td >lr, sigma  = <span style="color: red">0.1</span>, 0.5</td>
         </tr>
         <tr>
             <td>5000</td>
@@ -162,7 +162,7 @@
             <td ><span style="color: blue">lr=0.1 </span> </td>
             <td ><span style="color: blue">lr, lambda =0.1,0.1 </span> </td>
             <td >lr, inp,target,k = <span style="color: red">0.1, 1., 1, 5</span></td>
-            <td >lr, sigma  = <span style="color: red">0.1, 2</span></td>
+            <td >lr, sigma  = <span style="color: red">0.1</span>, 2</td>
         </tr>
         </tr>
         <tr>
@@ -211,7 +211,7 @@
         </tr>
         <tr>
             <td>5000</td>
-            <td > <span style="color: red"> lr=0.1 </span></td>
+            <td >  lr=0.1 </td>
             <td ><span style="color: blue">lr=0.1 </span> </td>
             <td > <span style="color: blue">lr, lambda =0.1,0.1 </span></td>
             <td >lr, inp,target,k = <span style="color: blue">0.1, 1, 1, 5</span></td>
@@ -229,7 +229,7 @@
         </tr>
         <tr>
             <td>1000</td>
-            <td > <span style="color: red"> lr=0.5 </span> </td>
+            <td > lr=0.7 </td>
             <td >lr=0.7 </td>
             <td > <span style="color: blue">lr, lambda =0.1,0.1 </span></td>
             <td >lr, inp,target,k = <span style="color: blue">0.1, 0.1, 1, 5</span></td>
@@ -238,7 +238,7 @@
         </tr>
         <tr>
             <td>5000</td>
-            <td > <span style="color: red"> lr=0.9 </span> </td>
+            <td > lr=0.7 </td>
             <td ><span style="color: blue">lr=0.7 </span> </td>
             <td > <span style="color: blue">lr, lambda =0.1,0.1 </span></td>
             <td >lr, inp,target,k = <span style="color: blue">0.1, 0.1, 1, 5</span></td>
@@ -265,7 +265,7 @@
         </tr>
         <tr>
             <td>5000</td>
-            <td > <span style="color: red"> lr=0.9 </span> </td>
+            <td > <span style="color: red"> lr=0.7 </span> </td>
             <td > <span style="color: red"> lr=0.1 </span> </td>
             <td > <span style="color: blue">lr, lambda =0.1,0.1 </span></td>
             <td >lr, inp,target,k = <span style="color: red">0.1,1, 1,5</span></td>

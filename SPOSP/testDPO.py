@@ -27,14 +27,15 @@ net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
 
 ############### Configuration
-N, noise, deg = 5000,0.5,1
-for N in [1000,5000]:
+N, noise, deg = 100,0.5,8
+for sigma in [1.,2.]:
     ###################################### Hyperparams #########################################
     lr = 0.1
     l1_weight = 1e-5
     batchsize  = 128
     max_epochs = 30
-    sigma, num_samples= 0.5,  1 
+    num_samples= 1
+    # sigma, num_samples= 0.5,  1 
     ######################################  Data Reading #########################################
 
     Train_dfx= pd.read_csv("SyntheticData/TraindataX_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None)

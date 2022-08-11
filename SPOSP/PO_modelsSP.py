@@ -1,6 +1,6 @@
 import logging
 import torch 
-from torch import nn, optim
+from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
 from torch.utils.data import DataLoader

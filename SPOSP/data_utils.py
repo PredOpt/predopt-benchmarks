@@ -25,7 +25,7 @@ class datawrapper():
 ###################################### Dataloader #########################################
 
 class ShortestPathDataModule(pl.LightningDataModule):
-    def __init__(self, train_df,valid_df,test_df,generator, batchsize: int = 32, num_workers: int=8):
+    def __init__(self, train_df,valid_df,test_df,generator,  normalize=False, batchsize: int = 32, num_workers: int=8):
         super().__init__()
         self.train_df = train_df
         self.valid_df =  valid_df

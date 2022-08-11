@@ -27,11 +27,11 @@ normed_net = nn.Sequential(*net_layers)
 ############### Configuration
 N, noise, deg = 100,0.5,6
 
-for deg in [2,4,6,8]:
+for deg in [1,2,4,6,8]:
     ###################################### Hyperparams #########################################
-    lr = 0.5
+    lr = 0.1
     l1_weight = 1e-5
-    mu = 0.1
+    mu = 10.
     batchsize  = 128
     max_epochs = 40
     ######################################  Data Reading #########################################
