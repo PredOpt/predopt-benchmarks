@@ -78,6 +78,7 @@ class WarcraftDataModule(pl.LightningDataModule):
             "input_image_size": val_full_images[0].shape[1],
             "output_features": val_true_weights[0].shape[0] * val_true_weights[0].shape[1],
             "num_channels": val_full_images[0].shape[-1],
+            "output_shape": (val_true_weights[0].shape[0] , val_true_weights[0].shape[1]),
             "denormalize": denormalize
         }
 

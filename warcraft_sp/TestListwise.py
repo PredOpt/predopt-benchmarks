@@ -1,6 +1,6 @@
 import argparse
-from data_utils import WarcraftDataModule,return_trainlabel
-from Trainer import *
+from Trainer.data_utils import WarcraftDataModule, return_trainlabel
+from Trainer.Trainer import *
 import pytorch_lightning as pl
 import pandas as pd
 import numpy as np

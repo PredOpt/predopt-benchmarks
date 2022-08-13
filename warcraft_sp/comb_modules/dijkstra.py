@@ -4,7 +4,7 @@ import torch
 from functools import partial
 from comb_modules.utils import get_neighbourhood_func
 from collections import namedtuple
-from utils import maybe_parallelize
+# from utils import maybe_parallelize
 
 DijkstraOutput = namedtuple("DijkstraOutput", ["shortest_path", "is_unique", "transitions"])
 
@@ -60,26 +60,26 @@ def get_solver(neighbourhood_fn):
 
     return solver
 
-def shortest_pathsolution(solver, weights):
-    '''
-    solver: dijkstra solver
-    weights: torch tensor matrix
-    '''
-    np_weights = weights.detach().cpu().numpy()
-    suggested_tours = np.asarray (maybe_parallelize(solver, arg_list=list(np_weights)))
-    return torch.from_numpy(suggested_tours).float().to(weights.device)
+# def shortest_pathsolution(solver, weights):
+#     '''
+#     solver: dijkstra solver
+#     weights: torch tensor matrix
+#     '''
+#     np_weights = weights.detach().cpu().numpy()
+#     suggested_tours = np.asarray (maybe_parallelize(solver, arg_list=list(np_weights)))
+#     return torch.from_numpy(suggested_tours).float().to(weights.device)
 
 
 
-def growcache(solver, cache, output):
-    '''
-    cache is torch array [currentpoolsize,48]
-    y_hat is  torch array [batch_size,48]
-    '''
-    weights = output.reshape(-1, output.shape[-1], output.shape[-1])
-    shortest_path =  shortest_pathsolution(solver, weights).numpy() 
-    cache_np = cache.detach().numpy()
-    cache_np = np.unique(np.append(cache_np,shortest_path,axis=0),axis=0)
-    # torch has no unique function, so we need to do this
-    return torch.from_numpy(cache_np).float()
+# def growcache(solver, cache, output):
+#     '''
+#     cache is torch array [currentpoolsize,48]
+#     y_hat is  torch array [batch_size,48]
+#     '''
+#     weights = output.reshape(-1, output.shape[-1], output.shape[-1])
+#     shortest_path =  shortest_pathsolution(solver, weights).numpy() 
+#     cache_np = cache.detach().numpy()
+#     cache_np = np.unique(np.append(cache_np,shortest_path,axis=0),axis=0)
+#     # torch has no unique function, so we need to do this
+#     return torch.from_numpy(cache_np).float()
 

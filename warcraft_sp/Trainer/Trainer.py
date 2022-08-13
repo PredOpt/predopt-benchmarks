@@ -5,11 +5,13 @@ import numpy as np
 from torch import nn, optim
 from torch.autograd import Variable
 import torch.nn.functional as F
-from computervisionmodels import get_model
+from Trainer.computervisionmodels import get_model
 from comb_modules.losses import *
-from diff_layer import BlackboxDifflayer,SPOlayer
-from comb_modules.dijkstra import get_solver, shortest_pathsolution
-from metric import normalized_regret
+from Trainer.diff_layer import BlackboxDifflayer,SPOlayer, CvxDifflayer, IntoptDifflayer    
+from comb_modules.dijkstra import get_solver
+from Trainer.utils import shortest_pathsolution, growcache
+
+from Trainer.metric import normalized_regret
 from DPO import perturbations
 from DPO import fenchel_young as fy
 from imle.wrapper import imle
@@ -339,7 +341,65 @@ class DPO(twostage_baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
-from comb_modules.dijkstra import growcache
+class DCOL(twostage_baseline):
+    def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
+        lr=1e-3, seed=20,loss="hamming" ):
+        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
+        lr,  seed,loss)
+
+        if loss=="hamming":
+            self.loss_fn = HammingLoss()
+        if loss=="regret":
+            self.loss_fn = RegretLoss()
+        self.comb_layer = CvxDifflayer(metadata["output_shape"]) 
+        print("-> meta data size", metadata["input_image_size"], 
+        metadata["output_features"], metadata["output_shape"] )
+
+    def forward(self,x):
+        output = self.model(x)
+        relu_op = nn.ReLU()
+        return relu_op(output)
+
+    def training_step(self, batch, batch_idx):
+        input, label, true_weights = batch
+        output = self(input)
+        
+        weights = output.reshape(-1, output.shape[-1], output.shape[-1])
+        shortest_path = self.comb_layer(weights)
+
+        training_loss = self.loss_fn(shortest_path, label, true_weights)
+        self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
+        return training_loss 
+
+
+class IntOpt(twostage_baseline):
+    def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
+        lr=1e-3, seed=20,loss="hamming",thr=0.1,damping=1e-3, ):
+        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
+        lr,  seed,loss)
+
+        if loss=="hamming":
+            self.loss_fn = HammingLoss()
+        if loss=="regret":
+            self.loss_fn = RegretLoss()
+        self.comb_layer = IntoptDifflayer(metadata["output_shape"],thr, damping) 
+
+    def forward(self,x):
+        output = self.model(x)
+        relu_op = nn.ReLU()
+        return relu_op(output)
+
+    def training_step(self, batch, batch_idx):
+        input, label, true_weights = batch
+        output = self(input)
+        
+        weights = output.reshape(-1, output.shape[-1], output.shape[-1])
+        shortest_path = self.comb_layer(weights)
+
+        training_loss = self.loss_fn(shortest_path, label, true_weights)
+        self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
+        return training_loss 
+
 class CachingPO(twostage_baseline):
     def __init__(self, metadata,init_cache,tau=0.,growth=0.1, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, seed=20,loss="pointwise"):
@@ -390,17 +450,3 @@ class CachingPO(twostage_baseline):
         # self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss    
  
-    # def training_step(self, batch, batch_idx):
-    #     x,y, sol = batch
-    #     y_hat =  self(x).squeeze()
-    #     if (np.random.random(1)[0]<= self.growth) or len(self.cache)==0:
-    #         self.cache = growcache(self.exact_solver, self.cache, y_hat)
-
-  
-    #     loss = self.loss_fn(y_hat,y,sol,self.cache, self.tau)
-    #     l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
-    #     training_loss=  loss/len(y)  + l1penalty * self.l1_weight
-    #     self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
-    #     self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
-    #     self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
-    #     return training_loss 
