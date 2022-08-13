@@ -1422,13 +1422,6 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
                         logging.info("not able to find solutions")
                         problem_solved = False
                         break
-                    #print(np.sum(x_hat))
-                    #print(c.dot(x_hat))
-                    ### experimnets with dividing by tau
-                    #x = x/tau
-                    #y = y/tau
-                    #t = t/tau
-                    #tau = 1
                 save_for_initialization ={"x":x,"y":y,"t":t,"tau":tau,"kappa":kappa}
                 logging.info("stopping mu value %s and threshold value is %s stopping tau %s and stopping kappa %s after iter count %d" %(mu,
                     thr_,tau,kappa, iter_count))
