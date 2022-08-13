@@ -1301,19 +1301,28 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
                 b_=b.detach().numpy()
                 if b_.shape[0] ==0:
                     b_ = None
+            else:
+                b_ = None
             if A is not None:
                 A_ = A.detach().numpy()
                 if A_.shape[0] ==0:
                     A_ = None
+            else:
+                A_ = None
 
             if h is not None:
                 h_ = h.detach().numpy()
                 if h_.shape[0] ==0:
                     h_ = None
+            else:
+                h_ = None
+            
             if G is not None:
                 G_ = G.detach().numpy()
                 if G_.shape[0] ==0:
                     G_ = None
+            else:
+                G_ = None
             n = len(c_)
             bounds_ = bounds if bounds is not None else [(0, None) for i in range(n)]
             thr_ = thr if thr is not None else 0.

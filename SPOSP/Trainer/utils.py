@@ -5,7 +5,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import numpy as np
-from losses import SPOLoss, batch_solve
+from Trainer.losses import SPOLoss, batch_solve
 
 
 

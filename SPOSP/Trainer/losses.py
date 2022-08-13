@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import numpy as np
-from optmizer_module import G
+from Trainer.optmizer_module import G
 import networkx as nx
 import cvxpy as cp
 import cvxpylayers

@@ -7,9 +7,9 @@ from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 import numpy as np
 
-from losses import *
-from utils import  regret_fn, regret_aslist, growcache
-from optmizer_module import spsolver
+from Trainer.losses import *
+from Trainer.utils import  regret_fn, regret_aslist, growcache
+from Trainer.optmizer_module import spsolver
 from imle.wrapper import imle
 from imle.target import TargetDistribution
 from imle.noise import SumOfGammaNoiseDistribution
@@ -264,9 +264,10 @@ class IntOpt(DCOL):
     Differentiable Convex Optimization Layers
     '''
     def __init__(self,net,exact_solver = spsolver,thr=0.1,damping=1e-3,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
-        self.solver  = intoptsolver(thr=thr,damping=damping)
+        
 
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed)  
+        self.solver  = intoptsolver(thr=thr,damping=damping)
 
 
 
