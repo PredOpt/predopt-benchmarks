@@ -175,7 +175,7 @@ class IntoptDifflayer(nn.Module):
         )
 
         b = np.concatenate((np.zeros(N) ,b_vector ))
-        self.A, self.b = A,b
+        self.A, self.b = torch.from_numpy(A),  torch.from_numpy(b)
 
     def forward(self,weights):
         weights_flat = weights.view(-1,weights.shape[-1]*weights.shape[-1])
