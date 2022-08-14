@@ -9,7 +9,7 @@ from .solvers.pdipm import spbatch as pdipm_spb
 
 from enum import Enum
 import gurobipy as gp
-lb,ub = -gp.GRB.INFINITY, +gp.GRB.INFINITY
+lb,ub =  0 , 1
 # lb,ub = 0,1
 
 ############# The previous code was not working with mvar

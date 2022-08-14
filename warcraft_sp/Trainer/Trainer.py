@@ -7,7 +7,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 from Trainer.computervisionmodels import get_model
 from comb_modules.losses import *
-from Trainer.diff_layer import BlackboxDifflayer,SPOlayer, CvxDifflayer, IntoptDifflayer    
+from Trainer.diff_layer import BlackboxDifflayer,SPOlayer, CvxDifflayer, IntoptDifflayer, QptDifflayer    
 from comb_modules.dijkstra import get_solver
 from Trainer.utils import shortest_pathsolution, growcache, maybe_parallelize
 
@@ -411,6 +411,47 @@ class IntOpt(twostage_baseline):
         # training_loss = loss #self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
+
+
+
+class QPTL(twostage_baseline):
+    def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
+        lr=1e-3, seed=20,loss="hamming",mu=1e-3 ):
+        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
+        lr,  seed,loss)
+
+        if loss=="hamming":
+            self.loss_fn = HammingLoss()
+        if loss=="regret":
+            self.loss_fn = RegretLoss()
+        self.comb_layer =  QptDifflayer(metadata["output_shape"], mu) 
+
+    def forward(self,x):
+        output = self.model(x)
+        relu_op = nn.ReLU()
+        return relu_op(output)
+
+    def training_step(self, batch, batch_idx):
+        input, label, true_weights = batch
+        output = self(input)
+        
+        weights = output.reshape(-1, output.shape[-1], output.shape[-1])
+        shortest_path = (maybe_parallelize(self.comb_layer, arg_list=list(weights)))
+        shortest_path = torch.stack(shortest_path)
+        # print("Path")
+        # print(shortest_path[0].shape)
+        # for ii in range(len(weights)):
+        #     weight = weights[ii]
+        #     shortest_path = self.comb_layer(weight)
+        #     loss  += self.loss_fn(shortest_path, label[ii], true_weights[ii])
+        training_loss = self.loss_fn(shortest_path, label, true_weights)
+
+
+        # training_loss = loss #self.loss_fn(shortest_path, label, true_weights)
+        self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
+        return training_loss 
+
+
 
 class CachingPO(twostage_baseline):
     def __init__(self, metadata,init_cache,tau=0.,growth=0.1, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",

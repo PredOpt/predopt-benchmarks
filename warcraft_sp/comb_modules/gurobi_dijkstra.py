@@ -57,25 +57,6 @@ def ILP(matrix):
     A_pos = A.copy()
     A_pos[A_pos==-1]=0
 
-
-    # b =  np.zeros(len(A))
-    # b[0] = 0
-    # b[-1] = -1
-
-    # b =  2*np.ones(len(A))
-    # b[0] = 1
-    # b[-1] = 1
-    # model = gp.Model()
-    # model.setParam('OutputFlag', 0)
-    # x = model.addMVar(shape=len(A) , vtype=gp.GRB.BINARY, name="x")
-    # model.setObjective(matrix.flatten() @x, gp.GRB.MINIMIZE)
-    # model.addConstr( x[0]==1, name="source")
-    # model.addConstr( x[-1]==1, name="sink")
-    # model.addConstr( row_sum_constraintmat@ x >= np.ones(x_max), name="eq")
-    # model.addConstr( col_sum_constraintmat@ x >= np.ones(y_max), name="eq")
-
-    # # model.addConstr( (A-I)@ x >= b, name="eq")
-    # model.addConstr( A@ x >= b, name="eq")
     bigM = 1e18
     
 

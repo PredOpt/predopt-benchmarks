@@ -91,9 +91,7 @@ def build_graph(x_max, y_max):
                 x_minus,x_plus, y_minus, y_plus = -1,1,-1,2
             elif ( (j== (y_max -1))):
                 x_minus,x_plus, y_minus, y_plus = -1,2,-1,1              
-                
-            
-                    
+                        
             E.extend([ ( name_concat(i,j), name_concat(i+p,j+q)) for p in range(x_minus,x_plus) 
                     for q in range(y_minus, y_plus) if ((p!=0)|(q!=0)) ])
             E.extend([ ( name_concat(i+p,j+q), name_concat(i,j) ) for p in range(x_minus,x_plus) 
@@ -171,7 +169,7 @@ class IntoptDifflayer(nn.Module):
             np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),axis=0
         )
 
-        b = np.concatenate(( b_vector, np.zeros(N) ))
+        b = np.concatenate(( b_vector, np.zeros(N) )).astype(np.float32)
         self.A, self.b = torch.from_numpy(A),  torch.from_numpy(b)
 
     def forward(self,weights):
@@ -182,18 +180,21 @@ class IntoptDifflayer(nn.Module):
         V  = (2*(NplusV) - TwoN)//2 
         
         weights_concat = torch.cat((weights_flat, torch.zeros(V)))
-        sol = IPOfunc(A =None,b=None,G=A_trch,h=b_trch,thr=self.thr,damping= self.damping)(weights_concat)
+        sol = IPOfunc(A =None,b=None,G=A_trch,h=b_trch,thr=self.thr,damping= self.damping, bounds=[(0,1)])(weights_concat)
 
         return sol[:N].view(weights.shape[-1],weights.shape[-1])
 
-
-
+from qpthlocal.qp import QPFunction
+from qpthlocal.qp import QPSolvers
+from qpthlocal.qp import make_gurobi_model
 
 class QptDifflayer(nn.Module):
-    def __init__(self, shape ) -> None:
+    def __init__(self, shape, mu=1e-5 ) -> None:
         super().__init__()
         x_max, y_max = shape
         G = build_graph(x_max, y_max)
+        self.mu  = mu
+
         Incidence_mat = nx.incidence_matrix(G, oriented=True).todense().astype(np.float32)
         Incidence_mat_pos = Incidence_mat.copy()
         Incidence_mat_pos[Incidence_mat_pos==-1]=0
@@ -202,3 +203,34 @@ class QptDifflayer(nn.Module):
         b_vector[-1] = 1
 
         N,V = Incidence_mat.shape
+        A = np.concatenate(
+        ( np.concatenate(( np.zeros((N,N)), Incidence_mat ),axis=1),
+            np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),axis=0
+        ).astype(np.float32)
+
+        b = np.concatenate(( b_vector, np.zeros(N) )).astype(np.float32)
+        self.A, self.b = torch.from_numpy(A),  torch.from_numpy(b)
+
+        self.model_params_quad = make_gurobi_model( A, b,
+            A, b, mu*np.eye(A.shape[1]) )
+        self.solver = QPFunction(verbose=False, 
+                        model_params=self.model_params_quad)
+                
+    def forward(self,weights):
+        A_trch, b_trch = self.A, self.b 
+        weights_flat = weights.view(weights.shape[-1]*weights.shape[-1])  
+        TwoN,NplusV = A_trch.shape
+        N = TwoN//2
+        V  = (2*(NplusV) - TwoN)//2 
+        
+        weights_concat = torch.cat((weights_flat, torch.zeros(V))).float()
+
+        Q =   self.mu*torch.eye(A_trch.shape[1]).float()
+
+        sol = self.solver(Q.expand(1, *Q.shape),
+                             weights_concat , 
+                            A_trch.expand(1,*A_trch.shape), b_trch.expand(1,*b_trch.shape), 
+                            torch.Tensor(), torch.Tensor())
+        sol = sol[0]
+
+        return sol[:N].view(weights.shape[-1],weights.shape[-1])
