@@ -8,7 +8,6 @@ from .solvers.pdipm import spbatch as pdipm_spb
 # from .solvers.pdipm import single as pdipm_s
 
 from enum import Enum
-import gurobipy as gp
 lb,ub =  0 , 1
 # lb,ub = 0,1
 
