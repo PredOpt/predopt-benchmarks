@@ -19,4 +19,4 @@ input   = /dev/null
 error    = ./err/intopt_$(id).error
 log       = ./log/intopt_$(id).condor_log
 
-Queue modelname,imgsz,thr,dampinglr,tag,id from intopt.in
+Queue modelname,imgsz,thr,damping,lr,tag,id from intopt.in
