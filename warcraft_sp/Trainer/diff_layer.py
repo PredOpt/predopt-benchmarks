@@ -147,12 +147,12 @@ class CvxDifflayer(nn.Module):
         b_trch = torch.from_numpy(self.b)
 
         sol = layer(Incidence_mat_trch ,Incidence_mat_pos_trch,
-        b_trch, weights.view(-1,weights.shape[-1]*weights.shape[-1]) )
-        return sol[0].view(-1,weights.shape[-1],weights.shape[-1])
+        b_trch, weights.view(weights.shape[-1]*weights.shape[-1]) )
+        return sol[0].view(weights.shape[-1],weights.shape[-1])
 
 from intopt.intopt_model import IPOfunc
 class IntoptDifflayer(nn.Module):
-    def __init__(self, shape,thr=0.1,damping=1e-3 ) -> None:
+    def __init__(self, shape,thr=1e-8,damping=1e-8 ) -> None:
         super().__init__()
         x_max, y_max = shape
         G = build_graph(x_max, y_max)
@@ -166,24 +166,25 @@ class IntoptDifflayer(nn.Module):
         b_vector[-1] = 1
 
         N,V = Incidence_mat.shape
-
-
-
         A = np.concatenate(
         ( np.concatenate(( np.zeros((N,N)), Incidence_mat ),axis=1),
             np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),axis=0
         )
 
-        b = np.concatenate((np.zeros(N) ,b_vector ))
+        b = np.concatenate(( b_vector, np.zeros(N) ))
         self.A, self.b = torch.from_numpy(A),  torch.from_numpy(b)
 
     def forward(self,weights):
-        weights_flat = weights.view(-1,weights.shape[-1]*weights.shape[-1])
-        A,b = self.A, self.b 
-        A_trch, b_trch = A, b
+        weights_flat = weights.view(weights.shape[-1]*weights.shape[-1])  
+        A_trch, b_trch = self.A, self.b 
+        TwoN,NplusV = A_trch.shape
+        N = TwoN//2
+        V  = (2*(NplusV) - TwoN)//2 
+        
+        weights_concat = torch.cat((weights_flat, torch.zeros(V)))
+        sol = IPOfunc(A =None,b=None,G=A_trch,h=b_trch,thr=self.thr,damping= self.damping)(weights_concat)
 
-        sol = IPOfunc(A =None,b=None,G=A_trch,h=b_trch,thr=self.thr,damping= self.damping)(weights_flat)
-        return sol[:len(A)]
+        return sol[:N].view(weights.shape[-1],weights.shape[-1])
 
 
 

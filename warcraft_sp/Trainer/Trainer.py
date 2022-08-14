@@ -9,7 +9,7 @@ from Trainer.computervisionmodels import get_model
 from comb_modules.losses import *
 from Trainer.diff_layer import BlackboxDifflayer,SPOlayer, CvxDifflayer, IntoptDifflayer    
 from comb_modules.dijkstra import get_solver
-from Trainer.utils import shortest_pathsolution, growcache
+from Trainer.utils import shortest_pathsolution, growcache, maybe_parallelize
 
 from Trainer.metric import normalized_regret
 from DPO import perturbations
@@ -365,7 +365,10 @@ class DCOL(twostage_baseline):
         output = self(input)
         
         weights = output.reshape(-1, output.shape[-1], output.shape[-1])
-        shortest_path = self.comb_layer(weights)
+        # shortest_path = self.comb_layer(weights)
+        shortest_path = (maybe_parallelize(self.comb_layer, arg_list=list(weights)))
+        shortest_path = torch.stack(shortest_path)
+
 
         training_loss = self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
@@ -394,9 +397,18 @@ class IntOpt(twostage_baseline):
         output = self(input)
         
         weights = output.reshape(-1, output.shape[-1], output.shape[-1])
-        shortest_path = self.comb_layer(weights)
-
+        shortest_path = (maybe_parallelize(self.comb_layer, arg_list=list(weights)))
+        shortest_path = torch.stack(shortest_path)
+        # print("Path")
+        # print(shortest_path[0].shape)
+        # for ii in range(len(weights)):
+        #     weight = weights[ii]
+        #     shortest_path = self.comb_layer(weight)
+        #     loss  += self.loss_fn(shortest_path, label[ii], true_weights[ii])
         training_loss = self.loss_fn(shortest_path, label, true_weights)
+
+
+        # training_loss = loss #self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
