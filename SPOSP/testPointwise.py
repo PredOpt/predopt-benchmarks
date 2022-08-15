@@ -22,7 +22,7 @@ ckpt_dir =  "ckpt_dir/Pointwise/"
 log_dir = "lightning_logs/Pointwise/"
 
 shutil.rmtree(log_dir,ignore_errors=True)
-shutil.rmtree(log_dir,ignore_errors=True)
+
 
 net_layers = [nn.BatchNorm1d(5),nn.Linear(5,40)]
 normed_net = nn.Sequential(*net_layers)
@@ -129,7 +129,7 @@ for deg in [1,2,4,6]:
             ###############################  Save  Learning Curve Data ########
             import os
             from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-            parent_dir=   log_dir+"default/"
+            parent_dir=   log_dir+"lightning_logs/"
             version_dirs = [os.path.join(parent_dir,v) for v in os.listdir(parent_dir)]
 
             walltimes = []
