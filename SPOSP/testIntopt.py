@@ -39,7 +39,7 @@ for N in [100]:
                 l1_weight = 1e-5
                 batchsize  = 128
                 max_epochs = 40
-                damping= 0.1, 1e-3
+                damping=  1e-3
                 ######################################  Data Reading #########################################
 
                 Train_dfx= pd.read_csv("SyntheticData/TraindataX_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None)

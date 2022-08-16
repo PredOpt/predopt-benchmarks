@@ -13,6 +13,13 @@ import time, datetime
 from scipy.optimize import OptimizeWarning
 from intopt.remove_redundancy import _remove_redundancy, _remove_redundancy_sparse, _remove_redundancy_dense
 np.set_printoptions(threshold=np.inf)
+has_umfpack = True
+has_cholmod = True
+try:
+    import scikits.umfpack  # test whether to use factorized
+except ImportError:
+    has_umfpack = False
+
 def _format_A_constraints(A, n_x, sparse_lhs=False):
     """Format the left hand side of the constraints to a 2D array
 
@@ -522,127 +529,127 @@ def _get_Abc(c,A_ub=None, b_ub=None, A_eq=None, b_eq=None, bounds=None,
 
     return A, b, c, c0, x0    
 
-def postsolve(x, n_x, complete=False, tol=1e-8, copy=False):
-    """
-    Given solution x to presolved, standard form linear program x, add
-    fixed variables back into the problem and undo the variable substitutions
-    to get solution to original linear program. Also, calculate the objective
-    function value, slack in original upper bound constraints, and residuals
-    in original equality constraints.
+# def postsolve(x, n_x, complete=False, tol=1e-8, copy=False):
+#     """
+#     Given solution x to presolved, standard form linear program x, add
+#     fixed variables back into the problem and undo the variable substitutions
+#     to get solution to original linear program. Also, calculate the objective
+#     function value, slack in original upper bound constraints, and residuals
+#     in original equality constraints.
 
-    Parameters
-    ----------
-    x : 1D array
-        Solution vector to the standard-form problem.
-    postsolve_args : tuple
-        Data needed by _postsolve to convert the solution to the standard-form
-        problem into the solution to the original problem, including:
+#     Parameters
+#     ----------
+#     x : 1D array
+#         Solution vector to the standard-form problem.
+#     postsolve_args : tuple
+#         Data needed by _postsolve to convert the solution to the standard-form
+#         problem into the solution to the original problem, including:
 
-        c : 1D array
-            Original coefficients of the linear objective function to be
-            minimized.
-        A_ub : 2D array, optional
-            2D array such that ``A_ub @ x`` gives the values of the upper-bound
-            inequality constraints at ``x``.
-        b_ub : 1D array, optional
-            1D array of values representing the upper-bound of each inequality
-            constraint (row) in ``A_ub``.
-        A_eq : 2D array, optional
-            2D array such that ``A_eq @ x`` gives the values of the equality
-            constraints at ``x``.
-        b_eq : 1D array, optional
-            1D array of values representing the RHS of each equality constraint
-            (row) in ``A_eq``.
-        bounds : sequence of tuples
-            Bounds, as modified in presolve
-        undo: list of tuples
-            (`index`, `value`) pairs that record the original index and fixed value
-            for each variable removed from the problem
+#         c : 1D array
+#             Original coefficients of the linear objective function to be
+#             minimized.
+#         A_ub : 2D array, optional
+#             2D array such that ``A_ub @ x`` gives the values of the upper-bound
+#             inequality constraints at ``x``.
+#         b_ub : 1D array, optional
+#             1D array of values representing the upper-bound of each inequality
+#             constraint (row) in ``A_ub``.
+#         A_eq : 2D array, optional
+#             2D array such that ``A_eq @ x`` gives the values of the equality
+#             constraints at ``x``.
+#         b_eq : 1D array, optional
+#             1D array of values representing the RHS of each equality constraint
+#             (row) in ``A_eq``.
+#         bounds : sequence of tuples
+#             Bounds, as modified in presolve
+#         undo: list of tuples
+#             (`index`, `value`) pairs that record the original index and fixed value
+#             for each variable removed from the problem
 
-    complete : bool
-        Whether the solution is was determined in presolve (``True`` if so)
-    tol : float
-        Termination tolerance; see [1]_ Section 4.5.
+#     complete : bool
+#         Whether the solution is was determined in presolve (``True`` if so)
+#     tol : float
+#         Termination tolerance; see [1]_ Section 4.5.
 
-    Returns
-    -------
-    x : 1D array
-        Solution vector to original linear programming problem
-    fun: float
-        optimal objective value for original problem
-    slack : 1D array
-        The (non-negative) slack in the upper bound constraints, that is,
-        ``b_ub - A_ub @ x``
-    con : 1D array
-        The (nominally zero) residuals of the equality constraints, that is,
-        ``b - A_eq @ x``
-    lb : 1D array
-        The lower bound constraints on the original variables
-    ub: 1D array
-        The upper bound constraints on the original variables
-    """
-    # note that all the inputs are the ORIGINAL, unmodified versions
-    # no rows, columns have been removed
-    # the only exception is bounds; it has been modified
-    # we need these modified values to undo the variable substitutions
-    # in retrospect, perhaps this could have been simplified if the "undo"
-    # variable also contained information for undoing variable substitutions
-    #c, A_ub, b_ub, A_eq, b_eq, bounds, undo = postsolve_args
+#     Returns
+#     -------
+#     x : 1D array
+#         Solution vector to original linear programming problem
+#     fun: float
+#         optimal objective value for original problem
+#     slack : 1D array
+#         The (non-negative) slack in the upper bound constraints, that is,
+#         ``b_ub - A_ub @ x``
+#     con : 1D array
+#         The (nominally zero) residuals of the equality constraints, that is,
+#         ``b - A_eq @ x``
+#     lb : 1D array
+#         The lower bound constraints on the original variables
+#     ub: 1D array
+#         The upper bound constraints on the original variables
+#     """
+#     # note that all the inputs are the ORIGINAL, unmodified versions
+#     # no rows, columns have been removed
+#     # the only exception is bounds; it has been modified
+#     # we need these modified values to undo the variable substitutions
+#     # in retrospect, perhaps this could have been simplified if the "undo"
+#     # variable also contained information for undoing variable substitutions
+#     #c, A_ub, b_ub, A_eq, b_eq, bounds, undo = postsolve_args
 
-    #n_x = len(c)
+#     #n_x = len(c)
 
-    # we don't have to undo variable substitutions for fixed variables that
-    # were removed from the problem
-    no_adjust = set()
+#     # we don't have to undo variable substitutions for fixed variables that
+#     # were removed from the problem
+#     no_adjust = set()
 
-    # if there were variables removed from the problem, add them back into the
-    # solution vector
-    '''
-    if len(undo) > 0:
-        no_adjust = set(undo[0])
-        x = x.tolist()
-        for i, val in zip(undo[0], undo[1]):
-            x.insert(i, val)
-        copy = True
-    '''
-    if copy:
-        x = np.array(x, copy=True)
+#     # if there were variables removed from the problem, add them back into the
+#     # solution vector
+#     '''
+#     if len(undo) > 0:
+#         no_adjust = set(undo[0])
+#         x = x.tolist()
+#         for i, val in zip(undo[0], undo[1]):
+#             x.insert(i, val)
+#         copy = True
+#     '''
+#     if copy:
+#         x = np.array(x, copy=True)
 
-    # now undo variable substitutions
-    # if "complete", problem was solved in presolve; don't do anything here
-    if not complete and bounds is not None:  # bounds are never none, probably
-        n_unbounded = 0
-        for i, b in enumerate(bounds):
-            if i in no_adjust:
-                continue
-            lb, ub = b
-            if lb is None and ub is None:
-                n_unbounded += 1
-                x[i] = x[i] - x[n_x + n_unbounded - 1]
-            else:
-                if lb is None:
-                    x[i] = ub - x[i]
-                else:
-                    x[i] += lb
-    x = x[:n_x]  # all the rest of the variables were artificial
-    #comment out rest
-    '''
-    fun = x.dot(c)
-    slack = b_ub - A_ub.dot(x)  # report slack for ORIGINAL UB constraints
-    # report residuals of ORIGINAL EQ constraints
-    con = b_eq - A_eq.dot(x)
+#     # now undo variable substitutions
+#     # if "complete", problem was solved in presolve; don't do anything here
+#     if not complete and bounds is not None:  # bounds are never none, probably
+#         n_unbounded = 0
+#         for i, b in enumerate(bounds):
+#             if i in no_adjust:
+#                 continue
+#             lb, ub = b
+#             if lb is None and ub is None:
+#                 n_unbounded += 1
+#                 x[i] = x[i] - x[n_x + n_unbounded - 1]
+#             else:
+#                 if lb is None:
+#                     x[i] = ub - x[i]
+#                 else:
+#                     x[i] += lb
+#     x = x[:n_x]  # all the rest of the variables were artificial
+#     #comment out rest
+#     '''
+#     fun = x.dot(c)
+#     slack = b_ub - A_ub.dot(x)  # report slack for ORIGINAL UB constraints
+#     # report residuals of ORIGINAL EQ constraints
+#     con = b_eq - A_eq.dot(x)
 
-    # Patch for bug #8664. Detecting this sort of issue earlier
-    # (via abnormalities in the indicators) would be better.
-    bounds = np.array(bounds)  # again, this should have been the standard form
-    lb = bounds[:, 0]
-    ub = bounds[:, 1]
-    lb[np.equal(lb, None)] = -np.inf
-    ub[np.equal(ub, None)] = np.inf
+#     # Patch for bug #8664. Detecting this sort of issue earlier
+#     # (via abnormalities in the indicators) would be better.
+#     bounds = np.array(bounds)  # again, this should have been the standard form
+#     lb = bounds[:, 0]
+#     ub = bounds[:, 1]
+#     lb[np.equal(lb, None)] = -np.inf
+#     ub[np.equal(ub, None)] = np.inf
 
-    return x, fun, slack, con, lb, ub
-    '''
-    return x
+#     return x, fun, slack, con, lb, ub
+#     '''
+#     return x
 
 def _initialization(shape, init_val=None):
     if init_val is None:
@@ -1291,6 +1298,15 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
     run_time = 0.
     problem_solved = True
     # if no solution under timelimit or max-iter don't do gradient update
+    '''
+    Minimize::
+        c @ x
+    Subject to::
+        G @ x <= h
+        A @ x == b
+        lb <= x <= ub
+    '''
+
     class IPOfunc_cls(Function):        
         @staticmethod
         def forward(ctx,c):
@@ -1588,8 +1604,8 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
             return c_grad
     def Runtime():
             return run_time
-    def end_vectors():
-            return save_for_initialization
+    # def end_vectors():
+    #         return save_for_initialization
     def Runtime():
             return run_time
     def forward_solved():
@@ -1597,7 +1613,7 @@ def IPOfunc(A =None,b =None,G=None,h=None,alpha0=0.9995,beta=0.1,pc = True,
 
 
     IPOfunc.Runtime = Runtime
-    IPOfunc.end_vectors = end_vectors
+    # IPOfunc.end_vectors = end_vectors
     IPOfunc.forward_solved = forward_solved    
     return IPOfunc_cls.apply
     
