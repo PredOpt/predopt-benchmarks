@@ -38,6 +38,7 @@ class baseline_mse(pl.LightningModule):
         solver = self.solver
         
         x,y,sol,m = batch
+
         y_hat =  self(x).squeeze()
         val_loss= regret_fn(solver,y_hat,y,sol,m)
         criterion1 = nn.MSELoss(reduction='mean')
