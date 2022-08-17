@@ -9,3 +9,4 @@ scikit_learn==1.1.1
 cvxpy==1.2.1
 cvxpylayers==0.1.5
 networkx==2.6.3
+ortools==9.1.9490
