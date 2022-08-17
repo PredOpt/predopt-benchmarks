@@ -42,7 +42,7 @@ def seed_all(seed):
 ###################################### Hyperparams #########################################
 ################## Define the outputfile
 outputfile = "Rslt/BCE_matching{}_index{}.csv".format(args.instance, args.index)
-regretfile = "Rslt/BCE_matching{}_index{}Regret.csv".format(args.instance, args.index)
+regretfile = "Rslt/BCE_matchingRegret{}_index{}.csv".format(args.instance, args.index)
 ckpt_dir =  "ckpt_dir/BCE{}_index{}/".format(args.instance, args.index)
 log_dir = "lightning_logs/BCE{}_index{}/".format(args.instance, args.index)
 learning_curve_datafile = "LearningCurve/BCE{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lr,batch_size,seed, args.index)
@@ -86,6 +86,7 @@ for seed in range(10):
     df.index.name='instance'
     df ['model'] = 'BCE'
     df['lr'] = lr
+    df['seed']= seed
  
     with open(regretfile, 'a') as f:
         df.to_csv(f, header=f.tell()==0)
@@ -95,6 +96,7 @@ for seed in range(10):
     df = pd.DataFrame(testresult )
     df ['model'] = 'BCE'
     df['lr'] = lr
+    df['seed']= seed
 
     with open(outputfile, 'a') as f:
             df.to_csv(f, header=f.tell()==0)

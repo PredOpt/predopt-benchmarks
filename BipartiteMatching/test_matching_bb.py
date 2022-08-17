@@ -44,7 +44,7 @@ def seed_all(seed):
 ###################################### Hyperparams #########################################
 ################## Define the outputfile
 outputfile = "Rslt/DBB_matching{}_index{}.csv".format(args.instance, args.index)
-regretfile = "Rslt/DBB_matching{}_index{}Regret.csv".format(args.instance, args.index)
+regretfile = "Rslt/DBB_matchingRegret{}_index{}.csv".format(args.instance, args.index)
 ckpt_dir =  "ckpt_dir/DBB{}_index{}/".format(args.instance, args.index)
 log_dir = "lightning_logs/DBB{}_index{}/".format(args.instance, args.index)
 learning_curve_datafile = "LearningCurve/DBB{}_lambdaval{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lambda_val,lr,batch_size,seed, args.index)
@@ -89,6 +89,7 @@ for seed in range(10):
     df ['model'] = 'Blackbox'
     df['lr'] = lr
     df['lambda_val'] = lambda_val
+    df['seed']= seed
     with open(regretfile, 'a') as f:
         df.to_csv(f, header=f.tell()==0)
 
@@ -98,6 +99,7 @@ for seed in range(10):
     df ['model'] = 'Blackbox'
     df['lr'] = lr
     df['lambda_val'] = lambda_val
+    df['seed']= seed
     with open(outputfile, 'a') as f:
             df.to_csv(f, header=f.tell()==0)
     print("test result")

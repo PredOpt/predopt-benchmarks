@@ -44,7 +44,7 @@ def seed_all(seed):
 ###################################### Hyperparams #########################################
 ################## Define the outputfile
 outputfile = "Rslt/DBBBatchnorm_matching{}_index{}.csv".format(args.instance, args.index)
-regretfile = "Rslt/DBBBatchnorm_matching{}_index{}Regret.csv".format(args.instance, args.index)
+regretfile = "Rslt/DBBBatchnorm_matchingRegret{}_index{}.csv".format(args.instance, args.index)
 ckpt_dir =  "ckpt_dir/DBBBatchnorm{}_index{}/".format(args.instance, args.index)
 log_dir = "lightning_logs/DBBBatchnorm{}_index{}/".format(args.instance, args.index)
 learning_curve_datafile = "LearningCurve/DBBBatchnorm{}_lambdaval{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lambda_val,lr,batch_size,seed, args.index)
@@ -78,7 +78,7 @@ for seed in range(10):
 
 
 
-    model = DBB.load_from_checkpoint(best_model_path ,solver=solver,lr=lr, lambda_val=lambda_val)    
+    model = DBB.load_from_checkpoint(best_model_path ,solver=solver,lr=lr, lambda_val=lambda_val,norm=True)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     
@@ -89,6 +89,7 @@ for seed in range(10):
     df ['model'] = 'Blackbox'
     df['lr'] = lr
     df['lambda_val'] = lambda_val
+    df['seed']= seed
     with open(regretfile, 'a') as f:
         df.to_csv(f, header=f.tell()==0)
 
@@ -98,6 +99,7 @@ for seed in range(10):
     df ['model'] = 'Blackbox'
     df['lr'] = lr
     df['lambda_val'] = lambda_val
+    df['seed']= seed
     with open(outputfile, 'a') as f:
             df.to_csv(f, header=f.tell()==0)
     print("test result")
