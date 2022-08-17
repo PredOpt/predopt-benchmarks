@@ -8,6 +8,7 @@ import numpy as np
 name_concat = lambda s1,s2: '_'.join([str(s1), str(s2)])
 def ILP(matrix):
     x_max, y_max = matrix.shape
+    print("weight of sink node ",matrix[-1,-1])
     row_sum_constraintmat= np.zeros((x_max, x_max*y_max))
     col_sum_constraintmat= np.zeros((y_max, x_max*y_max))
     for i in range(x_max):
@@ -49,11 +50,8 @@ def ILP(matrix):
     G =  nx.DiGraph()
     G.add_nodes_from(N)
     G.add_edges_from(E)  
-    # A = nx.adjacency_matrix(G, weight=None).todense()
-    # I = np.identity(len(A))
-    # TA = A.T
 
-    A = nx.incidence_matrix(G, oriented=True).todense()
+    A = -nx.incidence_matrix(G, oriented=True).todense()
     A_pos = A.copy()
     A_pos[A_pos==-1]=0
 
@@ -61,8 +59,8 @@ def ILP(matrix):
     
 
     b =  np.zeros(len(A))
-    b[0] = -1
-    b[-1] = 1
+    b[0] = 1
+    b[-1] = -1
     model = gp.Model()
     model.setParam('OutputFlag', 0)
     # x = model.addMVar(shape=A.shape[1], vtype=gp.GRB.BINARY, name="x")
@@ -72,12 +70,15 @@ def ILP(matrix):
     x = model.addMVar(shape=A.shape[1],lb=0.0, ub=1.0, vtype=gp.GRB.CONTINUOUS, name="x")
     z = model.addMVar(shape=A.shape[0],lb=0.0, ub=1.0, vtype=gp.GRB.CONTINUOUS, name="z")
 
-    model.addConstr( z[0]==1, name="source")
-    model.addConstr( z[-1]==1, name="source")
-    # model.addConstr( row_sum_constraintmat@ x >= np.ones(x_max), name="eq")
-    # model.addConstr( col_sum_constraintmat@ x >= np.ones(y_max), name="eq")    
-    model.addConstr( A@ x <= b, name="eq")
+    # model.addConstr( z[0]==1, name="source")
+    model.addConstr( z[-1]==1, name="sink")
+  
+    model.addConstr( A@ x == b, name="eq")
     model.addConstr( A_pos@ x <=  z, name="eq")
+    '''
+    Inequality constraint only for sink nodes, as there is no incoming edge at sink, 
+    sink node variable can't be 1 otherwise. 
+    '''
 
     model.setObjective(matrix.flatten() @z, gp.GRB.MINIMIZE)
     model.optimize()

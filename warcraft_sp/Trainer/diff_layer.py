@@ -114,12 +114,12 @@ class CvxDifflayer(nn.Module):
         x_max, y_max = shape
         G = build_graph(x_max, y_max)
 
-        Incidence_mat = nx.incidence_matrix(G, oriented=True).todense().astype(np.float32)
+        Incidence_mat = -nx.incidence_matrix(G, oriented=True).todense().astype(np.float32)
         Incidence_mat_pos = Incidence_mat.copy()
         Incidence_mat_pos[Incidence_mat_pos==-1]=0
         b_vector  = np.zeros(len(Incidence_mat)).astype(np.float32)
-        b_vector[0] = -1
-        b_vector[-1] = 1
+        b_vector[0] = 1
+        b_vector[-1] = -1
 
         N,V = Incidence_mat.shape
 
@@ -130,11 +130,14 @@ class CvxDifflayer(nn.Module):
         b = cp.Parameter(N)
         c = cp.Parameter(N)
 
-        constraints = [x >= 0, x<=1,z>=0, z<=1, A @ x <= b, A_pos@x <=z]
+        # constraints = [x >= 0, x<=1,z>=0, z<=1,z[-1]==1, A @ x == b, A_pos@x <=z]
+        constraints = [x >= 0, x<=1,z>=0, z<=1, 
+        Incidence_mat @ x == b_vector , Incidence_mat_pos@x ==z]
         objective = cp.Minimize(c @ z)
 
         problem = cp.Problem(objective, constraints)
-        self.layer = CvxpyLayer(problem, parameters=[A,A_pos, b,c], variables=[z,x])
+        # self.layer = CvxpyLayer(problem, parameters=[A,A_pos, b,c], variables=[z,x])
+        self.layer = CvxpyLayer(problem, parameters=[c], variables=[z,x])
         self.Incidence_mat = Incidence_mat
         self.Incidence_mat_pos = Incidence_mat_pos
         self.b = b_vector 
@@ -144,17 +147,21 @@ class CvxDifflayer(nn.Module):
         Incidence_mat_pos_trch =  torch.from_numpy(self.Incidence_mat_pos)
         b_trch = torch.from_numpy(self.b)
 
-        sol = layer(Incidence_mat_trch ,Incidence_mat_pos_trch,
-        b_trch, weights.view(weights.shape[-1]*weights.shape[-1]) )
+        # sol = layer(Incidence_mat_trch ,Incidence_mat_pos_trch,
+        # b_trch, weights.view(weights.shape[-1]*weights.shape[-1]) )
+
+        sol = layer(weights.view(weights.shape[-1]*weights.shape[-1]) )
         return sol[0].view(weights.shape[-1],weights.shape[-1])
 
-from intopt.intopt_model import IPOfunc
-class IntoptDifflayer(nn.Module):
-    def __init__(self, shape,thr=1e-8,damping=1e-8 ) -> None:
+
+
+from qpth.qp import QPFunction
+class QptDifflayer(nn.Module):
+    def __init__(self, shape, mu=1e-8 ) -> None:
         super().__init__()
         x_max, y_max = shape
         G = build_graph(x_max, y_max)
-        self.thr, self.damping  = thr, damping
+        self.mu  = mu
 
         Incidence_mat = nx.incidence_matrix(G, oriented=True).todense().astype(np.float32)
         Incidence_mat_pos = Incidence_mat.copy()
@@ -163,26 +170,54 @@ class IntoptDifflayer(nn.Module):
         b_vector[0] = -1
         b_vector[-1] = 1
 
-        N,V = Incidence_mat.shape
+        N,V = Incidence_mat.shape # N is the number of nodes, V is the bumbe rof edges
         A = np.concatenate(
-        ( np.concatenate(( np.zeros((N,N)), Incidence_mat ),axis=1),
-            np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),axis=0
-        )
-
+        ( np.concatenate(( np.zeros((N,N)), Incidence_mat ),axis=1), ## AX <= b
+            np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),## A' X <=z
+            axis=0 ).astype(np.float32)
         b = np.concatenate(( b_vector, np.zeros(N) )).astype(np.float32)
+        A_lb  = np.concatenate((
+             np.concatenate(( -np.eye(N), np.zeros((N,V)) ),axis=1),
+             np.concatenate(( np.zeros((V,N)), -np.eye(V) ),axis=1)),
+             axis=0 ).astype(np.float32)
+        b_lb = np.zeros(N+V).astype(np.float32)
+        b_lb[0] = -1
+        A_ub  = np.concatenate((
+             np.concatenate(( np.eye(N), np.zeros((N,V)) ),axis=1),
+             np.concatenate(( np.zeros((V,N)), np.eye(V) ),axis=1)),
+             axis=0 ).astype(np.float32)
+        b_ub = np.ones(N+V).astype(np.float32)
+
+        A = np.concatenate((A,A_lb, A_ub   ), axis=0).astype(np.float32)
+        b = np.concatenate(( b, b_lb, b_ub )).astype(np.float32)
+
+
+        
         self.A, self.b = torch.from_numpy(A),  torch.from_numpy(b)
 
-    def forward(self,weights):
-        weights_flat = weights.view(weights.shape[-1]*weights.shape[-1])  
-        A_trch, b_trch = self.A, self.b 
-        TwoN,NplusV = A_trch.shape
-        N = TwoN//2
-        V  = (2*(NplusV) - TwoN)//2 
+        # self.model_params_quad = make_gurobi_model( A, b,
+        #     A, b, mu*np.eye(A.shape[1]) )
         
-        weights_concat = torch.cat((weights_flat, torch.zeros(V)))
-        sol = IPOfunc(A =None,b=None,G=A_trch,h=b_trch,thr=self.thr,damping= self.damping, bounds=[(0,1)])(weights_concat)
+        self.N, self.V =N,V
+        self.solver = QPFunction()
+                
+    def forward(self,weights):
+        A_trch, b_trch = self.A, self.b 
+        weights_flat = weights.view(weights.shape[-1]*weights.shape[-1])  
+
+        N, V = self.N, self.V 
+        weights_concat = torch.cat((weights_flat, torch.zeros(V))).float()
+
+        Q =   self.mu*torch.eye(A_trch.shape[1]).float()
+
+        sol = self.solver(Q,
+                            weights_concat , 
+                            A_trch, b_trch, 
+                            torch.Tensor(), torch.Tensor())
+        sol = sol[0]
 
         return sol[:N].view(weights.shape[-1],weights.shape[-1])
+
 
 # from qpthlocal.qp import QPFunction
 # from qpthlocal.qp import QPSolvers
@@ -235,13 +270,14 @@ class IntoptDifflayer(nn.Module):
 
 #         return sol[:N].view(weights.shape[-1],weights.shape[-1])
 
-from qpth.qp import QPFunction
-class QptDifflayer(nn.Module):
-    def __init__(self, shape, mu=1e-5 ) -> None:
+
+from intopt.intopt_model import IPOfunc
+class IntoptDifflayer(nn.Module):
+    def __init__(self, shape,thr=1e-8,damping=1e-8 ) -> None:
         super().__init__()
         x_max, y_max = shape
         G = build_graph(x_max, y_max)
-        self.mu  = mu
+        self.thr, self.damping  = thr, damping
 
         Incidence_mat = nx.incidence_matrix(G, oriented=True).todense().astype(np.float32)
         Incidence_mat_pos = Incidence_mat.copy()
@@ -250,34 +286,55 @@ class QptDifflayer(nn.Module):
         b_vector[0] = -1
         b_vector[-1] = 1
 
-        N,V = Incidence_mat.shape
+        N,V = Incidence_mat.shape # N is the number of nodes, V is the bumbe rof edges
         A = np.concatenate(
-        ( np.concatenate(( np.zeros((N,N)), Incidence_mat ),axis=1),
-            np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),axis=0
-        ).astype(np.float32)
-
+        ( np.concatenate(( np.zeros((N,N)), Incidence_mat ),axis=1), ## AX <= b
+            np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),## A' X <=z
+            axis=0 ).astype(np.float32)
         b = np.concatenate(( b_vector, np.zeros(N) )).astype(np.float32)
+        A_lb  = np.concatenate((
+             np.concatenate(( -np.eye(N), np.zeros((N,V)) ),axis=1),
+             np.concatenate(( np.zeros((V,N)), -np.eye(V) ),axis=1)),
+             axis=0 ).astype(np.float32)
+        b_lb = np.zeros(N+V).astype(np.float32)
+        b_lb[0] = -1
+        A_ub  = np.concatenate((
+             np.concatenate(( np.eye(N), np.zeros((N,V)) ),axis=1),
+             np.concatenate(( np.zeros((V,N)), np.eye(V) ),axis=1)),
+             axis=0 ).astype(np.float32)
+        b_ub = np.ones(N+V).astype(np.float32)
+
+        A = np.concatenate((A,A_lb, A_ub   ), axis=0).astype(np.float32)
+        b = np.concatenate(( b, b_lb, b_ub )).astype(np.float32)
+
+
+        
         self.A, self.b = torch.from_numpy(A),  torch.from_numpy(b)
 
         # self.model_params_quad = make_gurobi_model( A, b,
         #     A, b, mu*np.eye(A.shape[1]) )
-        self.solver = QPFunction()
-                
-    def forward(self,weights):
-        A_trch, b_trch = self.A, self.b 
-        weights_flat = weights.view(weights.shape[-1]*weights.shape[-1])  
-        TwoN,NplusV = A_trch.shape
-        N = TwoN//2
-        V  = (2*(NplusV) - TwoN)//2 
         
-        weights_concat = torch.cat((weights_flat, torch.zeros(V))).float()
+        self.N, self.V =N,V
 
-        Q =   self.mu*torch.eye(A_trch.shape[1]).float()
 
-        sol = self.solver(Q.expand(1, *Q.shape),
-                             weights_concat , 
-                            A_trch.expand(1,*A_trch.shape), b_trch.expand(1,*b_trch.shape), 
-                            torch.Tensor(), torch.Tensor())
-        sol = sol[0]
+
+        # N,V = Incidence_mat.shape # N is the number of nodes, V is the bumbe rof edges
+        # A = np.concatenate(
+        # ( np.concatenate(( np.zeros((N,N)), Incidence_mat ),axis=1),
+        #     np.concatenate(( -np.ones((N,N)),Incidence_mat_pos ),axis=1)),axis=0
+        # )
+
+        # b = np.concatenate(( b_vector, np.zeros(N) )).astype(np.float32)
+        # self.A, self.b = torch.from_numpy(A),  torch.from_numpy(b)
+
+    def forward(self,weights):
+        weights_flat = weights.view(weights.shape[-1]*weights.shape[-1])  
+        A_trch, b_trch = self.A, self.b 
+        N, V = self.N, self.V 
+
+        
+        weights_concat = torch.cat((weights_flat, torch.zeros(V)))
+        # bounds  = [(1.,1.)]+ [(0,1.)]* (N -2) +[(1.,1.)] +  [(0,1)]* (V)
+        sol = IPOfunc(A =None,b=None,G=A_trch,h=b_trch,thr=self.thr,damping= self.damping)(weights_concat)
 
         return sol[:N].view(weights.shape[-1],weights.shape[-1])
