@@ -226,9 +226,9 @@ class DCOL(twostage_regression):
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
+    def __init__(self,net,mu=0.1,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed)
-        self.solver = cvxsolver()
+        self.solver = cvxsolver(mu=mu)
     def training_step(self, batch, batch_idx):
         solver = self.solver
         x,y, sol = batch

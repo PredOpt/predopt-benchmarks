@@ -28,12 +28,13 @@ normed_net = nn.Sequential(*net_layers)
 net = nn.Linear(5,40)
 
 ############### Configuration
-N, noise, deg = 100,0.5,2
-for N in [100,1000]:
+N, noise, deg = 1000,0.5,2
+for mu in [10,1,0.1,1e-6]:
     for noise in [0.0,0.5]:
-        for deg in [1,2,4,6,8]:
+        for deg in [4,6,8, 1,2]:
             ###################################### Hyperparams #########################################
             lr = 0.1
+            # mu = 1e-5
             l1_weight = 1e-5
             batchsize  = 128
             max_epochs = 40
@@ -78,11 +79,11 @@ for N in [100,1000]:
                 
                 tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
                 trainer = pl.Trainer(max_epochs= max_epochs,callbacks=[checkpoint_callback],  min_epochs=5, logger=tb_logger)
-                model = DCOL(net= net,lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
+                model = DCOL(net= net,mu=mu, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
                 trainer.fit(model, datamodule=data)
                 best_model_path = checkpoint_callback.best_model_path
                 model = DCOL.load_from_checkpoint(best_model_path,
-                net= net, lr= lr, l1_weight=l1_weight, seed=seed)
+                net= net,mu=mu, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
 
                 y_pred = model(torch.from_numpy(x_test).float()).squeeze()
                 sol_test =  batch_solve(spsolver, torch.from_numpy(y_test).float())
@@ -98,6 +99,7 @@ for N in [100,1000]:
 
                 df['l1_weight'] = l1_weight
                 df['lr'] = lr
+                df['mu'] = mu
                 with open(regretfile, 'a') as f:
                     df.to_csv(f, header=f.tell()==0)
 
@@ -115,6 +117,7 @@ for N in [100,1000]:
                 df['N'] = N
                 df['l1_weight'] = l1_weight
                 df['lr'] = lr
+                df['mu'] = mu
                 with open(outputfile, 'a') as f:
                     df.to_csv(f, header=f.tell()==0)
             ###############################  Save  Learning Curve Data ########
@@ -141,4 +144,4 @@ for N in [100,1000]:
             df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
             "val_mse": mses })
             df['model'] ='DCOL'
-            df.to_csv("LearningCurve/DCOL_data_N_{}_noise_{}_deg_{}_lr{}.csv".format(N,noise,deg,lr))
+            df.to_csv("LearningCurve/DCOL_data_N_{}_noise_{}_deg_{}_lr{}_mu{}.csv".format(N,noise,deg,lr,mu))
