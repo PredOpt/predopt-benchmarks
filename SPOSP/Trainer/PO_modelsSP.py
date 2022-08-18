@@ -9,7 +9,7 @@ import numpy as np
 
 from Trainer.losses import *
 from Trainer.utils import  regret_fn, regret_aslist, growcache
-from Trainer.optmizer_module import spsolver
+from Trainer.optimizer_module import spsolver, cvxsolver, intoptsolver, qpsolver
 from imle.wrapper import imle
 from imle.target import TargetDistribution
 from imle.noise import SumOfGammaNoiseDistribution

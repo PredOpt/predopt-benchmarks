@@ -1,4 +1,4 @@
-from Trainer.optmizer_module import spsolver
+from Trainer.optimizer_module import spsolver
 import numpy as np
 import pytorch_lightning as pl
 import torch 
