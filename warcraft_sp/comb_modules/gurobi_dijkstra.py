@@ -71,10 +71,10 @@ def ILP(matrix):
     z = model.addMVar(shape=A.shape[0],lb=0.0, ub=1.0, vtype=gp.GRB.CONTINUOUS, name="z")
 
     # model.addConstr( z[0]==1, name="source")
-    model.addConstr( z[-1]==1, name="sink")
+    # model.addConstr( z[-1]==1, name="sink")
   
     model.addConstr( A@ x == b, name="eq")
-    model.addConstr( A_pos@ x <=  z, name="eq")
+    model.addConstr( A_pos@ x ==  z, name="eq")
     '''
     Inequality constraint only for sink nodes, as there is no incoming edge at sink, 
     sink node variable can't be 1 otherwise. 
