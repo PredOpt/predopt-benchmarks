@@ -161,8 +161,9 @@ class FenchelYoung(baseline_mse):
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
+        fy_solver = lambda y,m: batch_solve(self.solver,y,m)
 
-        criterion = fy.FenchelYoungLoss(self.solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= True)
+        criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= True)
         loss = criterion(y_hat, sol, m)
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
