@@ -2,6 +2,11 @@
 from Trainer.NNModels import cora_net, cora_normednet, cora_nosigmoidnet
 from Trainer.utils import regret_fn, regret_list
 from Trainer.diff_layer import *
+from DPO import perturbations
+from DPO import fenchel_young as fy
+from imle.wrapper import imle
+from imle.target import TargetDistribution
+from imle.noise import SumOfGammaNoiseDistribution
 import pandas as pd
 
 import numpy as np 
@@ -15,8 +20,9 @@ import pytorch_lightning as pl
 
 
 class baseline_mse(pl.LightningModule):
-    def __init__(self,solver,lr=1e-1,mode='default'):
+    def __init__(self,solver,lr=1e-1,mode='default',seed=0):
         super().__init__()
+        pl.seed_everything(seed)
         if mode=='default':
             self.model = cora_net(n_layers=2)
             
@@ -47,7 +53,7 @@ class baseline_mse(pl.LightningModule):
         y_hat =  self(x).squeeze()
         val_loss= regret_fn(solver,y_hat,y,sol,m)
         criterion1 = nn.MSELoss(reduction='mean')
-        mseloss = criterion1(y_hat, y)\
+        mseloss = criterion1(y_hat, y)
 
         if self.mode== "linear":
            y_hat = torch.sigmoid(y_hat)
@@ -79,19 +85,14 @@ class baseline_mse(pl.LightningModule):
         self.log("test_bce", bceloss, prog_bar=True, on_step=True, on_epoch=True, )        
         return  {"test_regret": val_loss, "test_mse": mseloss}
     def predict_step(self, batch, batch_idx):
+        '''
+        I am using the the predict module to compute regret !
+        '''
         solver = self.solver
         
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
-        # val_loss= regret_fn(solver,y_hat,y,sol,m)
-        # criterion1 = nn.MSELoss(reduction='mean')
-        # mseloss = criterion1(y_hat, y)
-        # criterion2 = nn.BCELoss(reduction='mean')
-        # bceloss = criterion2(y_hat, sol)
         regret_tensor = regret_list(solver,y_hat,y,sol,m)
-
-        # take average of `self.mc_iteration` iterations
-        # pred = torch.vstack([self.dropout(self.model(x)).unsqueeze(0) for _ in range(self.mc_iteration)]).mean(dim=0)
         return regret_tensor
     def configure_optimizers(self):
         
@@ -117,8 +118,8 @@ class baseline_mse(pl.LightningModule):
             }}
 
 class baseline_bce(baseline_mse):
-    def __init__(self,solver,lr=1e-1,mode='default'):
-            super().__init__(solver,lr,mode) 
+    def __init__(self,solver,lr=1e-1,mode='default',seed=0):
+            super().__init__(solver,lr,mode,seed) 
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
@@ -129,8 +130,8 @@ class baseline_bce(baseline_mse):
 
 
 class SPO(baseline_mse):
-    def __init__(self,solver, lr=1e-1,mode='default'):
-        super().__init__(solver,lr,mode)
+    def __init__(self,solver, lr=1e-1,mode='default',seed=0):
+        super().__init__(solver,lr,mode, seed)
         self.layer = SPOlayer(solver)
         # self.automatic_optimization = False
     def training_step(self, batch, batch_idx):
@@ -141,8 +142,8 @@ class SPO(baseline_mse):
         return loss
 
 class DBB(baseline_mse):
-    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='default'):
-        super().__init__(solver,lr,mode)
+    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='default', seed=0):
+        super().__init__(solver,lr,mode, seed)
         self.layer = DBBlayer(solver,lambda_val=lambda_val)
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
@@ -150,6 +151,23 @@ class DBB(baseline_mse):
         loss =  self.layer(y_hat, y,sol,m ) 
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+
+class FenchelYoung(baseline_mse):
+    def __init__(self,solver,sigma=0.1,num_samples=10, 
+        lr=1e-1,mode='default', seed=0):
+        self.sigma = sigma
+        self.num_samples = num_samples
+        super().__init__(solver,lr,mode, seed)
+    def training_step(self, batch, batch_idx):
+        x,y,sol,m = batch
+        y_hat =  self(x).squeeze()
+
+        criterion = fy.FenchelYoungLoss(self.solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= True)
+        loss = criterion(y_hat, sol, m)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
+
+
 
 # def MAP(sol,y,solpool,minimize=False):
 #     '''

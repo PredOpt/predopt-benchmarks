@@ -70,7 +70,7 @@ for seed in range(10):
 
     trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback] )
 
-    model = DBB(solver,lr=lr, lambda_val=lambda_val,mode='linear')
+    model = DBB(solver,lr=lr, lambda_val=lambda_val,mode='linear',seed=seed)
     trainer.fit(model, datamodule=data)
 
     best_model_path = checkpoint_callback.best_model_path
@@ -78,7 +78,7 @@ for seed in range(10):
 
 
 
-    model = DBB.load_from_checkpoint(best_model_path ,solver=solver,lr=lr, lambda_val=lambda_val,mode='linear')    
+    model = DBB.load_from_checkpoint(best_model_path ,solver=solver,lr=lr, lambda_val=lambda_val,mode='linear',seed=seed)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     

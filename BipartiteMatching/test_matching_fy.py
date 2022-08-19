@@ -6,8 +6,7 @@ import numpy as np
 import torch
 import shutil
 import random
-from Trainer.PO_models import baseline_mse
-import shutil
+from Trainer.PO_models import FenchelYoung
 from pytorch_lightning.callbacks import ModelCheckpoint
 from Trainer.data_utils import CoraMatchingDataModule
 from Trainer.bipartite import bmatching_diverse
@@ -17,6 +16,8 @@ params_dict = {"1":{'p':0.25, 'q':0.25},"2":{'p':0.5, 'q':0.5} }
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
+parser.add_argument("--sigma", type=float, help="sigma", default= 1e-1, required=False)
+parser.add_argument("--num_samples", type= int, help="number of samples", default= 1, required=False)
 parser.add_argument("--instance", type=str, help="{1:{'p':0.25, 'q':0.25},2:{'p':0.5, 'q':0.5}", default= "1", required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
@@ -26,6 +27,7 @@ parser.add_argument("--index", type=int, help="index", default= 50, required=Fal
 args = parser.parse_args()
 ###################################### Hyperparams #########################################
 lr = args.lr
+sigma, num_samples = args.sigma, args.num_samples
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
 seed = args.seed
@@ -41,11 +43,11 @@ def seed_all(seed):
     random.seed(seed)
 ###################################### Hyperparams #########################################
 ################## Define the outputfile
-outputfile = "Rslt/MSEBatchnorm_matching{}_index{}.csv".format(args.instance, args.index)
-regretfile = "Rslt/MSEBatchnorm_matchingRegret{}_index{}.csv".format(args.instance, args.index)
-ckpt_dir =  "ckpt_dir/MSEBatchnorm{}_index{}/".format(args.instance, args.index)
-log_dir = "lightning_logs/MSEBatchnorm{}_index{}/".format(args.instance, args.index)
-learning_curve_datafile = "LearningCurve/MSEBatchnorm{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lr,batch_size,seed, args.index)
+outputfile = "Rslt/FY_matching{}_index{}.csv".format(args.instance, args.index)
+regretfile = "Rslt/FY_matchingRegret{}_index{}.csv".format(args.instance, args.index)
+ckpt_dir =  "ckpt_dir/FY{}_index{}/".format(args.instance, args.index)
+log_dir = "lightning_logs/FY{}_index{}/".format(args.instance, args.index)
+learning_curve_datafile = "LearningCurve/FY{}_sigma{}_nsamp{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,sigma, num_samples,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 solver = bmatching_diverse
@@ -68,7 +70,7 @@ for seed in range(10):
 
     trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback] )
 
-    model = baseline_mse(solver,lr=lr, mode="batchnorm", seed=seed)
+    model = FenchelYoung(solver,sigma=sigma, num_samples=num_samples, lr=lr,seed=seed)
     trainer.fit(model, datamodule=data)
 
     best_model_path = checkpoint_callback.best_model_path
@@ -76,7 +78,7 @@ for seed in range(10):
 
 
 
-    model = baseline_mse.load_from_checkpoint(best_model_path ,solver=solver,lr=lr,mode="batchnorm", seed=seed)    
+    model = FenchelYoung.load_from_checkpoint(best_model_path ,solver=solver,sigma=sigma, num_samples=num_samples, lr=lr,seed=seed)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     
@@ -84,7 +86,7 @@ for seed in range(10):
     print(regret_list)
     df = pd.DataFrame({"regret":regret_list[0].tolist()})
     df.index.name='instance'
-    df ['model'] = 'MSE'
+    df ['model'] = 'FY'
     df['lr'] = lr
     df['seed']= seed
  
@@ -94,7 +96,7 @@ for seed in range(10):
 
     testresult = trainer.test(model, datamodule=data)
     df = pd.DataFrame(testresult )
-    df ['model'] = 'MSE'
+    df ['model'] = 'FY'
     df['lr'] = lr
     df['seed']= seed
 
@@ -126,7 +128,7 @@ for logs in version_dirs:
 
 df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
-df['model'] = 'MSE'
+df['model'] = 'FY'
 df.to_csv(learning_curve_datafile)
 
 

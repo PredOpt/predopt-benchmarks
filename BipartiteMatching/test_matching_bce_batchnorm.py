@@ -68,7 +68,7 @@ for seed in range(10):
 
     trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback] )
 
-    model = baseline_bce(solver,lr=lr,norm=True)
+    model = baseline_bce(solver,lr=lr,mode="batchnorm",seed=seed)
     trainer.fit(model, datamodule=data)
 
     best_model_path = checkpoint_callback.best_model_path
@@ -76,7 +76,7 @@ for seed in range(10):
 
 
 
-    model = baseline_bce.load_from_checkpoint(best_model_path ,solver=solver,lr=lr,norm=True)    
+    model = baseline_bce.load_from_checkpoint(best_model_path ,solver=solver,lr=lr,mode="batchnorm",seed=seed)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     
