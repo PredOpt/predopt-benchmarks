@@ -9,7 +9,7 @@ def batch_solve(solver,y,m,relaxation =False):
 
     sol = []
     for i in range(len(y)):
-        sol.append(  solver(y[i].detach().numpy(), m[i].numpy(), relaxation=relaxation) )
+        sol.append(  solver.solve(y[i].detach().numpy(), m[i].numpy(), relaxation=relaxation) )
     return torch.tensor(sol).float()
 
 

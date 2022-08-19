@@ -15,7 +15,7 @@ class CoraDatawrapper():
         else:
             y_iter = range(len(self.y))
             it = tqdm(y_iter) if verbose else y_iter
-            self.sols = np.array([solver(self.y[i], self.m[i], relaxation=relaxation, **params) for i in it])
+            self.sols = np.array([solver.solve(self.y[i], self.m[i], relaxation=relaxation, **params) for i in it])
             self.sols = torch.from_numpy(self.sols).float()
         
         self.x = torch.from_numpy(self.x).float()

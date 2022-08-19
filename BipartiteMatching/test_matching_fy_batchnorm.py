@@ -50,7 +50,7 @@ log_dir = "lightning_logs/FYBatchnorm{}_index{}/".format(args.instance, args.ind
 learning_curve_datafile = "LearningCurve/FYBatchnorm{}_sigma{}_nsamp{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,sigma, num_samples,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
-solver = bmatching_diverse
+solver = bmatching_diverse(**params)
 
 for seed in range(10):
     shutil.rmtree(ckpt_dir,ignore_errors=True)

@@ -28,56 +28,63 @@ def bmatching(preds, mult=1000, **kwargs):
 
 solver = pywraplp.Solver.CreateSolver('GLOP')
 # solver.SuppressOutput()
-def bmatching_diverse(preds, match_subs, p=0.25, q=0.25, relaxation=False, **kwargs):
+
+class bmatching_diverse:
+    def __init__(self,p=0.25, q=0.25, relaxation=False) -> None:
+        self.p, self.q = p,q
+        self.relaxation = relaxation
+    def solve(self, preds, match_subs,  **kwargs):
+        p,q = self.p, self.q
+        relaxation = self.relaxation
     
-    solver.Clear()
-    mult=1000
-    cost = -preds.reshape(50,50)*mult
-    m = match_subs.reshape(50,50)
-    n1 = len(cost)
-    n2 = len(cost[0])
-    x = {}
-    for i in range(n1):
-        for j in range(n2):
-            x[i,j] = solver.NumVar(0,1,'') if relaxation else solver.IntVar(0,1,'')
-
-    for i in range(n1):
-        solver.Add(solver.Sum([x[i, j] for j in range(n2)]) <= 1)
-
-    for j in range(n2):
-        solver.Add(solver.Sum([x[i, j] for i in range(n1)]) <= 1)
-
-    # pairing in same field
-    pairing_same = []
-    allvars = []
-    for i in range(n1):
-        for j in range(n2):
-            pairing_same.append(x[i,j] * m[i,j])
-            allvars.append(x[i,j])
-    solver.Add(solver.Sum(pairing_same) >= p*solver.Sum(allvars))
-
-    # pairing in distinct field
-    pairing_dis = []
-    for i in range(n1):
-        for j in range(n2):
-            pairing_dis.append(x[i,j] * (1-m[i,j]))
-    solver.Add(solver.Sum(pairing_dis) >= q*solver.Sum(allvars))
-
-    obj = []
-    for i in range(n1):
-        for j in range(n2):
-            obj.append(cost[i,j] * x[i,j]) 
-    solver.Minimize(solver.Sum(obj))
-
-    status = solver.Solve()
-    solution = np.zeros((50,50))
-
-    if status == pywraplp.Solver.OPTIMAL:
+        solver.Clear()
+        mult=1000
+        cost = -preds.reshape(50,50)*mult
+        m = match_subs.reshape(50,50)
+        n1 = len(cost)
+        n2 = len(cost[0])
+        x = {}
         for i in range(n1):
             for j in range(n2):
-                solution[i,j] = x[i,j].solution_value()
-    #solver.Clear()
-    return solution.reshape(-1)
+                x[i,j] = solver.NumVar(0,1,'') if relaxation else solver.IntVar(0,1,'')
+
+        for i in range(n1):
+            solver.Add(solver.Sum([x[i, j] for j in range(n2)]) <= 1)
+
+        for j in range(n2):
+            solver.Add(solver.Sum([x[i, j] for i in range(n1)]) <= 1)
+
+        # pairing in same field
+        pairing_same = []
+        allvars = []
+        for i in range(n1):
+            for j in range(n2):
+                pairing_same.append(x[i,j] * m[i,j])
+                allvars.append(x[i,j])
+        solver.Add(solver.Sum(pairing_same) >= p*solver.Sum(allvars))
+
+        # pairing in distinct field
+        pairing_dis = []
+        for i in range(n1):
+            for j in range(n2):
+                pairing_dis.append(x[i,j] * (1-m[i,j]))
+        solver.Add(solver.Sum(pairing_dis) >= q*solver.Sum(allvars))
+
+        obj = []
+        for i in range(n1):
+            for j in range(n2):
+                obj.append(cost[i,j] * x[i,j]) 
+        solver.Minimize(solver.Sum(obj))
+
+        status = solver.Solve()
+        solution = np.zeros((50,50))
+
+        if status == pywraplp.Solver.OPTIMAL:
+            for i in range(n1):
+                for j in range(n2):
+                    solution[i,j] = x[i,j].solution_value()
+        #solver.Clear()
+        return solution.reshape(-1)
 
 def get_qpt_matrices(match_subs, p=0.25, q=0.25, **kwargs):
     # we only have G * x <= h
