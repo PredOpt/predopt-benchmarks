@@ -1,5 +1,5 @@
 
-from Trainer.NNModels import cora_net, cora_normednet
+from Trainer.NNModels import cora_net, cora_normednet, cora_nosigmoidnet
 from Trainer.utils import regret_fn, regret_list
 from Trainer.diff_layer import *
 import pandas as pd
@@ -15,12 +15,17 @@ import pytorch_lightning as pl
 
 
 class baseline_mse(pl.LightningModule):
-    def __init__(self,solver,lr=1e-1,norm=False):
+    def __init__(self,solver,lr=1e-1,mode='default'):
         super().__init__()
-        if norm:
-            self.model = cora_normednet(n_layers=2)
-        else:
+        if mode=='default':
             self.model = cora_net(n_layers=2)
+            
+        elif mode=="batchnorm" :
+            self.model = cora_normednet(n_layers=2)
+        elif mode=="linear":
+            self.model = cora_nosigmoidnet(n_layers=2)
+        self.mode= mode
+
         self.lr = lr
         self.solver = solver
         self.save_hyperparameters("lr")
@@ -42,7 +47,10 @@ class baseline_mse(pl.LightningModule):
         y_hat =  self(x).squeeze()
         val_loss= regret_fn(solver,y_hat,y,sol,m)
         criterion1 = nn.MSELoss(reduction='mean')
-        mseloss = criterion1(y_hat, y)
+        mseloss = criterion1(y_hat, y)\
+
+        if self.mode== "linear":
+           y_hat = torch.sigmoid(y_hat)
         criterion2 = nn.BCELoss(reduction='mean')
         bceloss = criterion2(y_hat, sol)
 
@@ -62,6 +70,9 @@ class baseline_mse(pl.LightningModule):
         criterion1 = nn.MSELoss(reduction='mean')
         mseloss = criterion1(y_hat, y)
         criterion2 = nn.BCELoss(reduction='mean')
+        if self.mode== "linear":
+           y_hat = torch.sigmoid(y_hat)
+
         bceloss = criterion2(y_hat, sol)
         self.log("test_regret", val_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("test_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )    
@@ -106,8 +117,8 @@ class baseline_mse(pl.LightningModule):
             }}
 
 class baseline_bce(baseline_mse):
-    def __init__(self,solver,lr=1e-1,norm=False):
-            super().__init__(solver,lr,norm) 
+    def __init__(self,solver,lr=1e-1,mode='default'):
+            super().__init__(solver,lr,mode) 
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
@@ -118,8 +129,8 @@ class baseline_bce(baseline_mse):
 
 
 class SPO(baseline_mse):
-    def __init__(self,solver, lr=1e-1,norm=False):
-        super().__init__(solver,lr,norm)
+    def __init__(self,solver, lr=1e-1,mode='default'):
+        super().__init__(solver,lr,mode)
         self.layer = SPOlayer(solver)
         # self.automatic_optimization = False
     def training_step(self, batch, batch_idx):
@@ -130,8 +141,8 @@ class SPO(baseline_mse):
         return loss
 
 class DBB(baseline_mse):
-    def __init__(self, solver,lr=1e-1,lambda_val=0.1,norm=False):
-        super().__init__(solver,lr,norm)
+    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='default'):
+        super().__init__(solver,lr,mode)
         self.layer = DBBlayer(solver,lambda_val=lambda_val)
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
