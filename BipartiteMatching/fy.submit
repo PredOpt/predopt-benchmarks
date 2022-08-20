@@ -17,6 +17,6 @@ Arguments      = $(modelname) $(instance) $(sigma) $(nsamp) $(lr) $(tag) $(id)
 input   = /dev/null
 output  = ./out/matchingfyrun_$(id).out
 error    = ./err/matchingfyrun_$(id).error
-log       = ./log/matchingfyrun_$(id).condor_log
+log       = ./log/matchingfyrun_$(id).log
 
 Queue modelname,instance,sigma,nsamp,lr,tag,id from fy.in
