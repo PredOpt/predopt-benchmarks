@@ -4,7 +4,7 @@ modelname=${1}
 instance=${2}
 lamda=${3}
 lr=${4}
-tag= ${5}
+tag=${5}
 id=${6}
 echo ${tag}
 
