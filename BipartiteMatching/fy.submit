@@ -15,7 +15,7 @@ Executable     = ./fy.sh
 Arguments      = $(modelname) $(instance) $(sigma) $(nsamp) $(lr) $(tag) $(id)
 
 input   = /dev/null
-#output  = ./out/img12run_$(id).out
+output  = ./out/matchingfyrun_$(id).out
 error    = ./err/matchingfyrun_$(id).error
 log       = ./log/matchingfyrun_$(id).condor_log
 
