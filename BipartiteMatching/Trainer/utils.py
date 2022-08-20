@@ -5,13 +5,19 @@ import numpy as np
 # solver = bmatching_diverse
 # objective_fun=lambda x,v,**params: x @ v
 
-def batch_solve(solver,y,m,relaxation =False):
-    sol = []
-    print("shape in batch solve")
-    print(y.shape)
-    for i in range(len(y)):
-        sol.append(  solver.solve(y[i].detach().numpy(), m[i].numpy(), relaxation=relaxation) )
-    return torch.tensor(sol).float()
+def batch_solve(solver,y,m,relaxation =False,batched= True):
+
+    if batched:
+        ### y, m both are of dim (*,2500)
+        sol = []
+
+        for i in range(len(y)):
+            sol.append(  solver.solve(y[i].detach().numpy(), m[i].numpy(), relaxation=relaxation) )
+        return torch.tensor(sol).float()
+    else:
+        ### y, m both are of dim (2500)
+        sol = solver.solve(y.detach().numpy(), m.numpy(), relaxation=relaxation)
+        return torch.tensor(sol).float()
 
 
 def regret_list(solver,y_hat,y_true,sol_true,m,minimize=False):

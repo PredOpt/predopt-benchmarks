@@ -161,14 +161,28 @@ class FenchelYoung(baseline_mse):
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
-        print(y_hat.shape, sol.shape)
         # fy_solver = lambda y_: batch_solve(self.solver,y_,m)
 
-        def fy_solver(y_):
-            return batch_solve(self.solver,y_,m)
 
-        criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= True)
-        loss = criterion(y_hat, sol).mean()
+
+        loss = 0
+        for i in range(len(y_hat)):
+            def fy_solver(y_):
+                sol = []
+                ### FY extend the size of y to num_sample*batch
+                for j in range(len(y_)):
+                     sol.append(  batch_solve(self.solver,y_[j],m[i],batched=False).unsqueeze(0) )
+                
+                return torch.cat(sol).float()
+
+            # fy_solver = lambda y_: batch_solve(self.solver,y_,m[i],batched=False)
+            criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= False)
+            loss += criterion(y_hat[i], sol[i]).mean()
+
+
+
+        # criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= True)
+        # loss = criterion(y_hat, sol).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
