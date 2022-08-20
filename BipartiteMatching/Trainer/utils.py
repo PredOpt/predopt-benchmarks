@@ -7,6 +7,8 @@ import numpy as np
 
 def batch_solve(solver,y,m,relaxation =False):
     sol = []
+    print("shape in batch solve")
+    print(y.shape)
     for i in range(len(y)):
         sol.append(  solver.solve(y[i].detach().numpy(), m[i].numpy(), relaxation=relaxation) )
     return torch.tensor(sol).float()
