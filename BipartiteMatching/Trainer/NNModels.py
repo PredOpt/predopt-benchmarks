@@ -45,8 +45,8 @@ def cora_normednet(n_features=2866, n_hidden=200, n_layers=2, n_targets=1):
             ))
         # output layer
         layers.append(nn.Sequential(
-            nn.Linear(n_hidden, n_targets),
-            nn.Sigmoid()
+            nn.Linear(n_hidden, n_targets)
+            # nn.Sigmoid()
         ))
         return nn.Sequential(*layers)
 

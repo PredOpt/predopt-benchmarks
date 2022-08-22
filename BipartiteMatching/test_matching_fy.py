@@ -87,6 +87,8 @@ for seed in range(10):
     df = pd.DataFrame({"regret":regret_list[0].tolist()})
     df.index.name='instance'
     df ['model'] = 'FY'
+    df['sigma'] = sigma
+    df['num_samples'] = num_samples
     df['lr'] = lr
     df['seed']= seed
  
@@ -97,6 +99,8 @@ for seed in range(10):
     testresult = trainer.test(model, datamodule=data)
     df = pd.DataFrame(testresult )
     df ['model'] = 'FY'
+    df['sigma'] = sigma
+    df['num_samples'] = num_samples
     df['lr'] = lr
     df['seed']= seed
 
