@@ -30,9 +30,9 @@ net = nn.Linear(5,40)
 
 ############### Configuration
 N, noise, deg = 100,0.5,8
-for N in [100,1000]:
+for N in [5000]:
     for noise in [0.0,0.5]:
-        for deg in [1,2,4,6,8]:
+        for deg in [6,4,2,8,1]:
             ###################################### Hyperparams #########################################
             lr = 0.1
             mu = 1e-5
