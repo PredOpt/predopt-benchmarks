@@ -23,7 +23,7 @@ class baseline_mse(pl.LightningModule):
     def __init__(self,solver,lr=1e-1,mode='default',seed=0):
         super().__init__()
         pl.seed_everything(seed)
-        if mode=='default':
+        if mode=='sigmoid':
             self.model = cora_net(n_layers=2)
             
         elif mode=="batchnorm" :
@@ -55,7 +55,7 @@ class baseline_mse(pl.LightningModule):
         criterion1 = nn.MSELoss(reduction='mean')
         mseloss = criterion1(y_hat, y)
 
-        if self.mode== "linear":
+        if self.mode!= "sigmoid":
            y_hat = torch.sigmoid(y_hat)
         criterion2 = nn.BCELoss(reduction='mean')
         bceloss = criterion2(y_hat, sol)
