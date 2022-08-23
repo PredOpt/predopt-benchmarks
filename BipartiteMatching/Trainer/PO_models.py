@@ -162,9 +162,6 @@ class FenchelYoung(baseline_mse):
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
         # fy_solver = lambda y_: batch_solve(self.solver,y_,m)
-
-
-
         loss = 0
         for i in range(len(y_hat)):
             def fy_solver(y_):
@@ -185,9 +182,43 @@ class FenchelYoung(baseline_mse):
         # loss = criterion(y_hat, sol).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+class IMLE(baseline_mse):
+    def __init__(self,solver,k=5, nb_iterations=100,nb_samples=1, 
+            input_noise_temperature=1.0, target_noise_temperature=1.0, 
+            lr=1e-1,mode='sigmoid', seed=0):
+
+        super().__init__(solver,lr,mode, seed) 
+
+        self.target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
+        self.noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
+        self.input_noise_temperature= input_noise_temperature
+        self.target_noise_temperature= target_noise_temperature
+        self.nb_samples= nb_samples
+    def training_step(self, batch, batch_idx):
+
+        input_noise_temperature= self.input_noise_temperature
+        target_noise_temperature= self.target_noise_temperature
+        nb_samples= self.nb_samples
+        target_distribution = self.target_distribution
+        noise_distribution = self.noise_distribution
 
 
+        x,y,sol,m = batch
+        y_hat =  self(x).squeeze()
+        loss = 0
+        for i in range(len(y_hat)):
+            def imle_solver(y_):
+                sol = []
+                for j in range(len(y_)):
+                     sol.append(  batch_solve(self.solver,y_[j],m[i],batched=False).unsqueeze(0) )
+                return torch.cat(sol).float()
+            op = imle(imle_solver,  target_distribution=target_distribution,noise_distribution=noise_distribution,
+                    input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature,
+                    nb_samples= nb_samples)( y_hat[i].view(1,-1) ).squeeze()
+            loss += y[i].dot(sol[i] - op)
 
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
 # def MAP(sol,y,solpool,minimize=False):
 #     '''
 #     sol, y and y_hat are torch array [batch_size,48]

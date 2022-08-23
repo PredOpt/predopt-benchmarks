@@ -14,11 +14,6 @@ def SPOlayer(solver,minimize=False):
 
         @staticmethod
         def backward(ctx, grad_output):
-            """
-            In the backward pass we receive a Tensor containing the gradient of the loss
-            with respect to the output, and we need to compute the gradient of the loss
-            with respect to the input.
-            """
             y_hat,y_true,sol_true,m = ctx.saved_tensors
             y_spo = 2*y_hat - y_true
             sol_spo = batch_solve(solver,y_spo,m)
@@ -38,9 +33,7 @@ def DBBlayer(solver,lambda_val=1., minimize=False):
         @staticmethod
         def backward(ctx, grad_output):
             """
-            In the backward pass we receive a Tensor containing the gradient of the loss
-            with respect to the output, and we need to compute the gradient of the loss
-            with respect to the input.
+            In the backward pass we compute gradient to minimize regret
             """
             y_hat,y_true,sol_true,m = ctx.saved_tensors
             y_perturbed = y_hat + lambda_val* y_true
