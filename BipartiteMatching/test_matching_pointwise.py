@@ -6,10 +6,10 @@ import numpy as np
 import torch
 import shutil
 import random
-from Trainer.PO_models import SPO
+from Trainer.PO_models import CachingPO
 import shutil
 from pytorch_lightning.callbacks import ModelCheckpoint
-from Trainer.data_utils import CoraMatchingDataModule
+from Trainer.data_utils import CoraMatchingDataModule,  return_trainlabel
 from Trainer.bipartite import bmatching_diverse
 
 params_dict = {"1":{'p':0.25, 'q':0.25},"2":{'p':0.5, 'q':0.5} }
@@ -40,15 +40,15 @@ def seed_all(seed):
     np.random.seed(seed)
     random.seed(seed)
 ################## Define the outputfile
-outputfile = "Rslt/SPO_matching{}_index{}.csv".format(args.instance, args.index)
-regretfile = "Rslt/SPO_matchingRegret{}_index{}.csv".format(args.instance, args.index)
-ckpt_dir =  "ckpt_dir/SPO{}_index{}/".format(args.instance, args.index)
-log_dir = "lightning_logs/SPO{}_index{}/".format(args.instance, args.index)
-learning_curve_datafile = "LearningCurve/SPO{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lr,batch_size,seed, args.index)
+outputfile = "Rslt/Pointwise_matching{}_index{}.csv".format(args.instance, args.index)
+regretfile = "Rslt/Pointwise_matchingRegret{}_index{}.csv".format(args.instance, args.index)
+ckpt_dir =  "ckpt_dir/Pointwise{}_index{}/".format(args.instance, args.index)
+log_dir = "lightning_logs/Pointwise{}_index{}/".format(args.instance, args.index)
+learning_curve_datafile = "LearningCurve/Pointwise{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 solver = bmatching_diverse(**params)
-
+cache = return_trainlabel( solver,params )
 for seed in range(10):
     shutil.rmtree(ckpt_dir,ignore_errors=True)
     checkpoint_callback = ModelCheckpoint(
@@ -67,7 +67,7 @@ for seed in range(10):
 
     trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback] )
 
-    model = SPO(solver,lr=lr, seed= seed)
+    model =  CachingPO(solver,loss= "pointwise",init_cache=cache,lr=lr, seed= seed)  
     trainer.fit(model, datamodule=data)
 
     best_model_path = checkpoint_callback.best_model_path
@@ -75,7 +75,7 @@ for seed in range(10):
 
 
 
-    model = SPO.load_from_checkpoint(best_model_path ,solver=solver,lr=lr, seed= seed)    
+    model =  CachingPO.load_from_checkpoint(best_model_path ,loss= "pointwise", solver=solver,init_cache=cache,lr=lr, seed= seed)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     
@@ -83,7 +83,7 @@ for seed in range(10):
     print(regret_list)
     df = pd.DataFrame({"regret":regret_list[0].tolist()})
     df.index.name='instance'
-    df ['model'] = 'SPO'
+    df ['model'] = 'Pointwise'
     df['lr'] = lr
     df['seed']= seed
  
@@ -93,7 +93,7 @@ for seed in range(10):
 
     testresult = trainer.test(model, datamodule=data)
     df = pd.DataFrame(testresult )
-    df ['model'] = 'SPO'
+    df ['model'] = 'Pointwise'
     df['lr'] = lr
     df['seed']= seed
 
@@ -125,7 +125,7 @@ for logs in version_dirs:
 
 df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
-df['model'] = 'SPO'
+df['model'] = 'Pointwise'
 df.to_csv(learning_curve_datafile)
 
 

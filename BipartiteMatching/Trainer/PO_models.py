@@ -1,6 +1,6 @@
 
 from Trainer.NNModels import cora_net, cora_normednet, cora_nosigmoidnet
-from Trainer.utils import regret_fn, regret_list
+from Trainer.utils import regret_fn, regret_list, growpool_fn
 from Trainer.diff_layer import *
 from DPO import perturbations
 from DPO import fenchel_young as fy
@@ -219,6 +219,39 @@ class IMLE(baseline_mse):
 
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+
+from Trainer.RankingLosses import PointwiseLoss, ListwiseLoss, PairwisediffLoss, PairwiseLoss
+class CachingPO(baseline_mse):
+    def __init__(self,solver,init_cache,tau=1.,growth=0.1,loss="listwise",
+        lr=1e-1,mode='sigmoid', seed=0):
+        '''tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
+        '''
+        super().__init__(solver,lr,mode, seed) 
+        # self.save_hyperparameters()
+        if loss=="pointwise":
+            self.loss_fn = PointwiseLoss()
+        if loss=="pairwise":
+            self.loss_fn = PairwiseLoss(margin=tau)
+        if loss == "pairwise_diff":
+            self.loss_fn = PairwisediffLoss()
+        if loss == "listwise":
+            self.loss_fn = ListwiseLoss(temperature=tau)
+        self.cache = init_cache
+        self.growth = growth
+
+    
+
+    def training_step(self, batch, batch_idx):
+        x,y,sol,m = batch
+        y_hat =  self(x).squeeze()
+        
+        if (np.random.random(1)[0]< self.growth) or len(self.cache)==0:
+            self.cache= growpool_fn(self.solver,self.cache, y_hat,m)
+
+        loss = self.loss_fn(y_hat,y,sol,self.cache)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss 
+
 # def MAP(sol,y,solpool,minimize=False):
 #     '''
 #     sol, y and y_hat are torch array [batch_size,48]

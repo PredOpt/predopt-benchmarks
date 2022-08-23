@@ -28,6 +28,17 @@ class CoraDatawrapper():
         return self.x[index], self.y[index], self.sols[index], self.m[index]
 
 
+
+def return_trainlabel(solver,params):
+    x, y,m = get_cora()
+
+    y_train, y_test = y[:22], y[22:]
+    m_train, m_test = m[:22], m[22:]
+    y_iter = range(len(y_train))
+    sols = np.array([solver.solve(y[i], m[i], **params) for i in y_iter])
+    sols = np.unique(sols,axis=0)  
+    return  torch.from_numpy (sols)
+
 ###################################### Dataloader #########################################
 
 class CoraMatchingDataModule(pl.LightningDataModule):
