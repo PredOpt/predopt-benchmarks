@@ -20,7 +20,7 @@ import pytorch_lightning as pl
 
 
 class baseline_mse(pl.LightningModule):
-    def __init__(self,solver,lr=1e-1,mode='default',seed=0):
+    def __init__(self,solver,lr=1e-1,mode='sigmoid',seed=0):
         super().__init__()
         pl.seed_everything(seed)
         if mode=='sigmoid':
@@ -76,7 +76,7 @@ class baseline_mse(pl.LightningModule):
         criterion1 = nn.MSELoss(reduction='mean')
         mseloss = criterion1(y_hat, y)
         criterion2 = nn.BCELoss(reduction='mean')
-        if self.mode== "linear":
+        if self.mode!= "sigmoid":
            y_hat = torch.sigmoid(y_hat)
 
         bceloss = criterion2(y_hat, sol)
@@ -118,7 +118,7 @@ class baseline_mse(pl.LightningModule):
             }}
 
 class baseline_bce(baseline_mse):
-    def __init__(self,solver,lr=1e-1,mode='default',seed=0):
+    def __init__(self,solver,lr=1e-1,mode='sigmoid',seed=0):
             super().__init__(solver,lr,mode,seed) 
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
@@ -130,7 +130,7 @@ class baseline_bce(baseline_mse):
 
 
 class SPO(baseline_mse):
-    def __init__(self,solver, lr=1e-1,mode='default',seed=0):
+    def __init__(self,solver, lr=1e-1,mode='sigmoid',seed=0):
         super().__init__(solver,lr,mode, seed)
         self.layer = SPOlayer(solver)
         # self.automatic_optimization = False
@@ -142,7 +142,7 @@ class SPO(baseline_mse):
         return loss
 
 class DBB(baseline_mse):
-    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='default', seed=0):
+    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='sigmoid', seed=0):
         super().__init__(solver,lr,mode, seed)
         self.layer = DBBlayer(solver,lambda_val=lambda_val)
     def training_step(self, batch, batch_idx):
@@ -154,7 +154,7 @@ class DBB(baseline_mse):
 
 class FenchelYoung(baseline_mse):
     def __init__(self,solver,sigma=0.1,num_samples=10, 
-        lr=1e-1,mode='default', seed=0):
+        lr=1e-1,mode='sigmoid', seed=0):
         self.sigma = sigma
         self.num_samples = num_samples
         super().__init__(solver,lr,mode, seed)
