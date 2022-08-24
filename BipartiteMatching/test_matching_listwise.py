@@ -79,7 +79,7 @@ for seed in range(10):
 
 
 
-    model = CachingPO.load_from_checkpoint(best_model_path, loss= "listwise", init_cache=cache,tau=temperature, 
+    model = CachingPO.load_from_checkpoint(best_model_path, solver=solver,loss= "listwise", init_cache=cache,tau=temperature, 
          lr=lr, seed= seed)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
