@@ -4,7 +4,7 @@ modelname=${1}
 instance=${2}
 lr=${3}
 tag=${4}
-id=${4}
+id=${5}
 echo ${tag}
 
 source ~/.bashrc
