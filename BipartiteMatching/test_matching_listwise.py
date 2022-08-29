@@ -16,7 +16,7 @@ params_dict = {"1":{'p':0.25, 'q':0.25},"2":{'p':0.5, 'q':0.5} }
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--temperature", type=float, help="temeprature parameter", default= 1., required=False)
+parser.add_argument("--temperature", type=float, help="temperature parameter", default= 1., required=False)
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
 parser.add_argument("--instance", type=str, help="{1:{'p':0.25, 'q':0.25},2:{'p':0.5, 'q':0.5}", default= "1", required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
