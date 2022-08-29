@@ -9,7 +9,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from Trainer.comb_solver import knapsack_solver
 from Trainer.utils import batch_solve, regret_fn,regret_list
-from Trainer.diff_layer import SPOlayer
+from Trainer.diff_layer import SPOlayer, DBBlayer
 class twostage_mse(pl.LightningModule):
     def __init__(self,weights,capacity,n_items,lr=1e-1,seed=1):
         super().__init__()
@@ -91,4 +91,18 @@ class SPO(twostage_mse):
     
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+
+class DBB(twostage_mse):
+    def __init__(self,weights,capacity,n_items,lambda_val=1., lr=1e-1,seed=1):
+        super().__init__(weights,capacity,n_items,lr,seed)
+        self.layer = DBBlayer(self.solver, lambda_val=lambda_val)
     
+
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        solver = self.solver
+        y_hat =  self(x).squeeze()
+        sol_hat = self.layer(y_hat, y,sol ) 
+        loss = (sol - sol_hat).dot(y)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
