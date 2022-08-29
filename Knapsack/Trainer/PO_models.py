@@ -125,6 +125,6 @@ class FenchelYoung(twostage_mse):
         criterion = self.criterion 
         x,y,sol = batch
         y_hat =  self(x).squeeze()
-        loss = criterion(y_hat,sol)
+        loss = criterion(y_hat,sol).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
