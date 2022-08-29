@@ -6,14 +6,15 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
-from Trainer.PO_models import DBB
+from Trainer.PO_models import FenchelYoung
 from Trainer.data_utils import KnapsackDataModule
 from pytorch_lightning import loggers as pl_loggers
 import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--capacity", type=int, help="capacity of knapsack", default= 12)
-parser.add_argument("--lambda_val", type=float, help="value of lambda parameter", default= 1.)
+parser.add_argument("--sigma", type=float, help="value of sigma parameter", default= 1.)
+parser.add_argument("--num_samples", type=int, help="value of number of samples", default= 1)
 parser.add_argument("--lr", type=float, help="learning rate", default= 5e-4, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
@@ -33,18 +34,19 @@ def seed_all(seed):
     random.seed(seed)
 ############### Configuration
 ###################################### Hyperparams #########################################
-lambda_val = args.lambda_val
+sigma= args.sigma
+num_samples = args.num_samples
 lr = args.lr
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
 seed = args.seed
 capacity =  args.capacity
 ################## Define the outputfile
-outputfile = "Rslt/DBB_index{}.csv".format( args.index)
-regretfile = "Rslt/DBB_Regretindex{}.csv".format( args.index)
-ckpt_dir =  "ckpt_dir/DBB_index{}/".format( args.index)
-log_dir = "lightning_logs/DBB_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/DBB_lambda{}_lr{}_batchsize{}_index{}.csv".format(lambda_val,lr,batch_size, args.index)
+outputfile = "Rslt/FY_index{}.csv".format( args.index)
+regretfile = "Rslt/FY_Regretindex{}.csv".format( args.index)
+ckpt_dir =  "ckpt_dir/FY_index{}/".format( args.index)
+log_dir = "lightning_logs/FY_index{}/".format( args.index)
+learning_curve_datafile = "LearningCurve/FY_sigma{}_nsamp{}_lr{}_batchsize{}_index{}.csv".format(sigma,num_samples, lr,batch_size, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -66,17 +68,18 @@ for seed in range(10):
             mode="min")
     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
     trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
-    model =  DBB(weights,capacity,n_items,lambda_val= lambda_val,lr=lr, seed=seed)
+    model =  FenchelYoung(weights,capacity,n_items, sigma=sigma, num_samples=num_samples, lr=lr, seed=seed)
     trainer.fit(model, datamodule=data)
     best_model_path = checkpoint_callback.best_model_path
-    model = DBB.load_from_checkpoint(best_model_path,
-        weights = weights,capacity= capacity,n_items = n_items,lambda_val= lambda_val,lr=lr, seed=seed)
+    model = FenchelYoung.load_from_checkpoint(best_model_path,
+        weights = weights,capacity= capacity,n_items = n_items,sigma=sigma, num_samples=num_samples,lr=lr, seed=seed)
     ##### SummaryWrite ######################
     validresult = trainer.validate(model,datamodule=data)
     testresult = trainer.test(model, datamodule=data)
     df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
-    df ['model'] = 'DBB'
-    df['lambda_val'] = lambda_val
+    df ['model'] = 'FY'
+    df['sigma'] = sigma
+    df['num_samples'] = num_samples
     df['seed'] = seed
     df ['batch_size'] = batch_size
     df['lr'] =lr
@@ -90,8 +93,9 @@ for seed in range(10):
 
     df = pd.DataFrame({"regret":regret_list[0].tolist()})
     df.index.name='instance'
-    df ['model'] = 'DBB'
-    df['lambda_val'] = lambda_val
+    df ['model'] = 'FY'
+    df['sigma'] = sigma
+    df['num_samples'] = num_samples
     df['seed'] = seed
     df ['batch_size'] = batch_size
     df['lr'] =lr
@@ -124,7 +128,7 @@ for logs in version_dirs:
 
 df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
-df['model'] = 'DBB'
+df['model'] = 'FY'
 df.to_csv(learning_curve_datafile)
 
 
