@@ -1,0 +1,22 @@
+	############
+#
+# Example submit file for vanilla job
+#
+############
+
+getenv = True
+request_cpus = 10
+request_memory = 8 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
+
+Universe       = vanilla
+Executable     = ./baseline.sh
+Arguments      = $(modelname) $(capacity) $(lr) $(tag) $(id)
+
+input   = /dev/null
+#output  = ./out/img12run_$(id).out
+error    = ./err/Knapsackbaselinerun_$(id).error
+log       = ./log/Knapsackbaselinerun_$(id).condor_log
+
+Queue modelname,capacity,lr,tag,id from baseline.in
