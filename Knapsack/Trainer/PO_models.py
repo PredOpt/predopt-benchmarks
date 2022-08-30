@@ -110,7 +110,7 @@ class DBB(twostage_mse):
         solver = self.solver
         y_hat =  self(x).squeeze()
         sol_hat = self.layer(y_hat, y,sol ) 
-        loss = (sol - sol_hat).dot(y)
+        loss = ((sol - sol_hat)*y).sum(-1).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
@@ -126,5 +126,28 @@ class FenchelYoung(twostage_mse):
         x,y,sol = batch
         y_hat =  self(x).squeeze()
         loss = criterion(y_hat,sol).mean()
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
+
+class IMLE(twostage_mse):
+    def __init__(self,weights,capacity,n_items, k=5, nb_iterations=100,nb_samples=1, 
+            input_noise_temperature=1.0, target_noise_temperature=1.0,  lr=1e-1,seed=1):
+        super().__init__(weights,capacity,n_items,lr,seed)
+        imle_solver = lambda y_: batch_solve(self.solver,y_)
+
+        target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
+        noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
+
+        self.layer = imle(imle_solver,  target_distribution=target_distribution,noise_distribution=noise_distribution,
+                    input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature,
+                    nb_samples= nb_samples)
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        solver = self.solver
+        y_hat =  self(x).squeeze()
+        sol_hat = self.layer(y_hat ) 
+        # print("shape of sol")
+        # print(sol_hat.shape, sol.shape)
+        loss = ((sol - sol_hat)*y).sum(-1).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
