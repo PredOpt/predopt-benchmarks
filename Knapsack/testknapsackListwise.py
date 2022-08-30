@@ -14,6 +14,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument("--capacity", type=int, help="capacity of knapsack", default= 120)
 parser.add_argument("--growth", type=float, help="growth parameter", default= 0.1)
+parser.add_argument("--temperature", type=float, help="temperature parameter", default= 1., required=False)
 parser.add_argument("--lr", type=float, help="learning rate", default= 5e-4, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
@@ -35,16 +36,17 @@ def seed_all(seed):
 ###################################### Hyperparams #########################################
 growth = args.growth
 lr = args.lr
+temperature = args.temperature
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
 seed = args.seed
 capacity =  args.capacity
 ################## Define the outputfile
-outputfile = "Rslt/Pointwise_index{}.csv".format( args.index)
-regretfile = "Rslt/Pointwise_Regretindex{}.csv".format( args.index)
-ckpt_dir =  "ckpt_dir/Pointwise_index{}/".format( args.index)
-log_dir = "lightning_logs/Pointwise_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/Pointwise_lr{}_batchsize{}_growth{}_index{}.csv".format(lr,batch_size,growth, args.index)
+outputfile = "Rslt/Listwise_index{}.csv".format( args.index)
+regretfile = "Rslt/Listwise_Regretindex{}.csv".format( args.index)
+ckpt_dir =  "ckpt_dir/Listwise_index{}/".format( args.index)
+log_dir = "lightning_logs/Listwise_index{}/".format( args.index)
+learning_curve_datafile = "LearningCurve/Listwise_temp{}_lr{}_batchsize{}_growth{}_index{}.csv".format(lr,temperature,batch_size,growth, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -69,17 +71,19 @@ for seed in range(10):
             mode="min")
     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
     trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
-    model =  CachingPO(weights,capacity,n_items,init_cache=cache,growth=growth,  lr=lr, seed=seed, loss="pointwise")
+    model =  CachingPO(weights,capacity,n_items,init_cache=cache,growth=growth, tau=temperature, lr=lr, seed=seed, loss="listwise")
     trainer.fit(model, datamodule=data)
     best_model_path = checkpoint_callback.best_model_path
     model = CachingPO.load_from_checkpoint(best_model_path,
-        weights = weights,capacity= capacity,n_items = n_items,init_cache=cache,growth=growth,lr=lr, seed=seed, loss="pointwise")
+        weights = weights,capacity= capacity,n_items = n_items,init_cache=cache,growth=growth,
+        tau=temperature, lr=lr, seed=seed, loss="listwise")
     ##### SummaryWrite ######################
     validresult = trainer.validate(model,datamodule=data)
     testresult = trainer.test(model, datamodule=data)
     df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
-    df ['model'] = 'Pointwise'
+    df ['model'] = 'Listwise'
     df['growth'] = growth
+    df['temperature'] = temperature
     df['seed'] = seed
     df ['batch_size'] = batch_size
     df['lr'] =lr
@@ -93,8 +97,9 @@ for seed in range(10):
 
     df = pd.DataFrame({"regret":regret_list[0].tolist()})
     df.index.name='instance'
-    df ['model'] = 'Pointwise'
+    df ['model'] = 'Listwise'
     df['growth'] = growth
+    df['temperature'] = temperature
     df['seed'] = seed
     df ['batch_size'] = batch_size
     df['lr'] =lr
@@ -127,7 +132,7 @@ for logs in version_dirs:
 
 df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
-df['model'] = 'Pointwise'
+df['model'] = 'Listwise'
 df.to_csv(learning_curve_datafile)
 
 
