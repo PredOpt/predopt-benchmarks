@@ -16,6 +16,7 @@ params_dict = {"1":{'p':0.25, 'q':0.25},"2":{'p':0.5, 'q':0.5} }
 
 
 parser = argparse.ArgumentParser()
+parser.add_argument("--growth", type=float, help="growthparameter", default= 0.1)
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
 parser.add_argument("--instance", type=str, help="{1:{'p':0.25, 'q':0.25},2:{'p':0.5, 'q':0.5}", default= "1", required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
@@ -25,6 +26,7 @@ parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=
 parser.add_argument("--index", type=int, help="index", default= 50, required=False)
 args = parser.parse_args()
 ###################################### Hyperparams #########################################
+growth = args.growth
 lr = args.lr
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
@@ -44,7 +46,7 @@ outputfile = "Rslt/PairwiseDiff_matching{}_index{}.csv".format(args.instance, ar
 regretfile = "Rslt/PairwiseDiff_matchingRegret{}_index{}.csv".format(args.instance, args.index)
 ckpt_dir =  "ckpt_dir/PairwiseDiff{}_index{}/".format(args.instance, args.index)
 log_dir = "lightning_logs/PairwiseDiff{}_index{}/".format(args.instance, args.index)
-learning_curve_datafile = "LearningCurve/PairwiseDiff{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lr,batch_size,seed, args.index)
+learning_curve_datafile = "LearningCurve/PairwiseDiff{}_growth{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,growth,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 solver = bmatching_diverse(**params)
@@ -67,7 +69,7 @@ for seed in range(10):
 
     trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback] )
 
-    model =  CachingPO(solver,loss= "pairwise_diff",init_cache=cache,lr=lr, seed= seed)  
+    model =  CachingPO(solver,loss= "pairwise_diff",growth=growth, init_cache=cache,lr=lr, seed= seed)  
     trainer.fit(model, datamodule=data)
 
     best_model_path = checkpoint_callback.best_model_path
@@ -76,7 +78,7 @@ for seed in range(10):
 
 
     model =  CachingPO.load_from_checkpoint(best_model_path, solver=solver,
-    loss= "pairwise_diff",init_cache=cache,lr=lr, seed= seed)    
+    loss= "pairwise_diff",growth=growth,init_cache=cache,lr=lr, seed= seed)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     
@@ -85,6 +87,7 @@ for seed in range(10):
     df = pd.DataFrame({"regret":regret_list[0].tolist()})
     df.index.name='instance'
     df ['model'] = 'PairwiseDiff'
+    df['growth'] = growth
     df['lr'] = lr
     df['seed']= seed
  
@@ -95,6 +98,7 @@ for seed in range(10):
     testresult = trainer.test(model, datamodule=data)
     df = pd.DataFrame(testresult )
     df ['model'] = 'PairwiseDiff'
+    df['growth'] = growth
     df['lr'] = lr
     df['seed']= seed
 

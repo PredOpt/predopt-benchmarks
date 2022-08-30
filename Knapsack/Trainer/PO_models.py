@@ -8,7 +8,7 @@ from torch.autograd import Variable
 import torch.nn.functional as F
 import pytorch_lightning as pl
 from Trainer.comb_solver import knapsack_solver
-from Trainer.utils import batch_solve, regret_fn,regret_list
+from Trainer.utils import batch_solve, regret_fn,regret_list,  growpool_fn
 from Trainer.diff_layer import SPOlayer, DBBlayer
 
 from DPO import perturbations
@@ -151,3 +151,39 @@ class IMLE(twostage_mse):
         loss = ((sol - sol_hat)*y).sum(-1).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+
+
+from Trainer.RankingLosses import PointwiseLoss, ListwiseLoss, PairwisediffLoss, PairwiseLoss
+class CachingPO(twostage_mse):
+    def __init__(self, weights,capacity,n_items,init_cache,tau=1.,growth=0.1,loss="listwise",lr=1e-1,seed=1):
+        super().__init__(weights,capacity,n_items,lr,seed)
+        '''tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
+        '''
+        
+        if loss=="pointwise":
+            self.loss_fn = PointwiseLoss()
+        if loss=="pairwise":
+            self.loss_fn = PairwiseLoss(margin=tau)
+        if loss == "pairwise_diff":
+            self.loss_fn = PairwisediffLoss()
+        if loss == "listwise":
+            self.loss_fn = ListwiseLoss(temperature=tau)
+        self.cache = init_cache
+
+        self.growth = growth
+        cache_np = init_cache.detach().numpy()
+        cache_np = np.unique(cache_np,axis=0)
+        # torch has no unique function, so we have to do this
+        init_cache =  torch.from_numpy(cache_np).float()
+    
+
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        y_hat =  self(x).squeeze()
+        
+        if (np.random.random(1)[0]< self.growth) or len(self.cache)==0:
+            self.cache= growpool_fn(self.solver,self.cache, y_hat)
+
+        loss = self.loss_fn(y_hat,y,sol,self.cache)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss 

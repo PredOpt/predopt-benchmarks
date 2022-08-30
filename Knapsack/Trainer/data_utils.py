@@ -57,6 +57,7 @@ class KnapsackDataModule(pl.LightningDataModule):
         self.train_df = Datawrapper( x_train,y_train,solver=solver)
         self.valid_df  = Datawrapper( x_valid, y_valid,solver=solver )
         self.test_df = Datawrapper( x_test, y_test,solver=solver )
+        self.train_solutions= self.train_df.sol
 
         self.batch_size = batch_size
         self.generator = generator
