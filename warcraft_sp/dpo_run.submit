@@ -19,4 +19,4 @@ input   = /dev/null
 error    = ./err/onlyfyrun_$(id).error
 log       = ./log/onlyfyrun_$(id).condor_log
 
-Queue modelname,imgsz,sig,nsamp,seded,lr,tag,id from dpo_run.in
+Queue modelname,imgsz,sig,nsamp,seed,lr,tag,id from dpo_run.in
