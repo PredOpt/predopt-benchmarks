@@ -49,9 +49,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/IMLERegret{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/IMLERegret{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logs/IMLERegret{}_index{}/".format(args.img_size, args.index)
+outputfile = "Rslt/IMLERegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/IMLERegretRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/IMLERegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/IMLERegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/IMLERegret{}_inptmp_{}trgttmp_{}_lr{}_batchsize{}_numsamples{}_numiter{}_seed{}_index{}.csv".format(args.img_size,input_noise_temperature, target_noise_temperature,lr,batch_size,nb_samples,nb_iterations, seed,args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -82,6 +83,24 @@ best_model_path = checkpoint_callback.best_model_path
 model = IMLE.load_from_checkpoint(best_model_path,
     metadata=metadata, nb_iterations= nb_iterations,nb_samples= nb_samples, 
             input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, lr=lr, seed=seed, loss="regret")
+
+
+regret_list = trainer.predict(model, data.test_dataloader())
+
+df = pd.DataFrame({"regret":regret_list[0].tolist()})
+df.index.name='instance'
+df ['model'] = 'IMLE'
+df['seed'] = seed
+df ['batch_size'] = batch_size
+df['lr'] =lr
+df['k'] = k
+df['input_noise_temperature'] = input_noise_temperature
+df['target_noise_temperature'] = target_noise_temperature
+df['nb_iterations'] = nb_iterations
+df['nb_samples'] = nb_samples
+with open(regretfile, 'a') as f:
+    df.to_csv(f, header=f.tell()==0)
+
 
 ##### SummaryWrite ######################
 validresult = trainer.validate(model,datamodule=data)

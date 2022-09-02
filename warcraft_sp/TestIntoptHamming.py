@@ -45,9 +45,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/IntoptHamming{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/IntoptHamming{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logsIntoptHamming{}_index{}/".format(args.img_size, args.index)
+outputfile = "Rslt/IntoptHamming{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/IntoptHammingRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/IntoptHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/IntoptHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/IntoptHamming{}_lr{}_thr{}_damping{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr, thr, damping, batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -78,7 +79,18 @@ best_model_path = checkpoint_callback.best_model_path
 model = IntOpt.load_from_checkpoint(best_model_path,
     metadata=metadata, lr=lr, seed=seed,thr=thr, damping=damping, loss="hamming")
 
+regret_list = trainer.predict(model, data.test_dataloader())
 
+df = pd.DataFrame({"regret":regret_list[0].tolist()})
+df.index.name='instance'
+df ['model'] = 'Intopt'
+df['seed'] = seed
+df ['batch_size'] = batch_size
+df ['thr'] = thr
+df ['damping'] = damping
+df['lr'] =lr
+with open(regretfile, 'a') as f:
+    df.to_csv(f, header=f.tell()==0)
 
 
 ##### SummaryWrite ######################

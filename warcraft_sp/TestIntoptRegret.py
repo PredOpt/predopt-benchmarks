@@ -45,9 +45,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/IntoptRegret{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/IntoptRegret{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logsIntoptRegret{}_index{}/".format(args.img_size, args.index)
+outputfile = "Rslt/IntoptRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/IntoptRegretRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/IntoptRegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/IntoptRegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/IntoptRegret{}_lr{}_thr{}_damping{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr, thr, damping, batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -79,7 +80,18 @@ model = IntOpt.load_from_checkpoint(best_model_path,
     metadata=metadata, lr=lr, seed=seed,thr=thr, damping=damping, loss="regret")
 
 
+regret_list = trainer.predict(model, data.test_dataloader())
 
+df = pd.DataFrame({"regret":regret_list[0].tolist()})
+df.index.name='instance'
+df ['model'] = 'Intopt'
+df['seed'] = seed
+df ['batch_size'] = batch_size
+df ['thr'] = thr
+df ['damping'] = damping
+df['lr'] =lr
+with open(regretfile, 'a') as f:
+    df.to_csv(f, header=f.tell()==0)
 
 ##### SummaryWrite ######################
 validresult = trainer.validate(model,datamodule=data)

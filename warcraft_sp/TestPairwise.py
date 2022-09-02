@@ -45,9 +45,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/Pairwise{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/Pairwise{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logs/Pairwise{}_index{}/".format(args.img_size, args.index)
+outputfile = "Rslt/Pairwise{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/PairwiseRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/Pairwise{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/Pairwise{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/Pairwise{}_growth{}_tau{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,growth,tau, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -79,7 +80,18 @@ model = CachingPO.load_from_checkpoint(best_model_path,
     metadata=metadata,lr=lr, seed=seed,init_cache=cache, tau=tau,growth= growth,loss= "pairwise")
 
 
+regret_list = trainer.predict(model, data.test_dataloader())
 
+df = pd.DataFrame({"regret":regret_list[0].tolist()})
+df.index.name='instance'
+df ['model'] = 'Pairwise'
+df['growth'] = growth
+df['margin'] = tau
+df['seed'] = seed
+df ['batch_size'] = batch_size
+df['lr'] =lr
+with open(regretfile, 'a') as f:
+    df.to_csv(f, header=f.tell()==0)
 
 ##### SummaryWrite ######################
 validresult = trainer.validate(model,datamodule=data)

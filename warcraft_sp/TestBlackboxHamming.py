@@ -43,9 +43,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/BlackboxHamming{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/BlackboxHamming{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logs/BlackboxHamming{}_index{}/".format(args.img_size, args.index)
+outputfile = "Rslt/BlackboxHamming{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/BlackboxHammingRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/BlackboxHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/BlackboxHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/BlackboxHamming{}_lambdaval{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,lambda_val,lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -74,7 +75,17 @@ best_model_path = checkpoint_callback.best_model_path
 model = Blackbox.load_from_checkpoint(best_model_path,
     metadata=metadata,lambda_val=lambda_val, lr=lr, seed=seed,loss="hamming")
 
+regret_list = trainer.predict(model, data.test_dataloader())
 
+df = pd.DataFrame({"regret":regret_list[0].tolist()})
+df.index.name='instance'
+df ['model'] = 'BlackboxHamming'
+df['lambda_val'] = lambda_val
+df['seed'] = seed
+df ['batch_size'] = batch_size
+df['lr'] =lr
+with open(regretfile, 'a') as f:
+    df.to_csv(f, header=f.tell()==0)
 
 
 ##### SummaryWrite ######################

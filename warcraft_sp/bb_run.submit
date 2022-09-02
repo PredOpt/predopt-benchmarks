@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./bb_run.sh
-Arguments      = $(modelname) $(imgsz) $(lr) $(lambda) $(tag) $(id)
+Arguments      = $(modelname) $(imgsz) $(seed) $(lambda) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
-error    = ./err/bb12run_$(id).error
-log       = ./log/bb12run_$(id).condor_log
+error    = ./err/bbrun_$(id).error
+log       = ./log/bbrun_$(id).condor_log
 
-Queue modelname,imgsz,lr,lambda,tag,id from bb_run.in
+Queue modelname,imgsz,seed,lambda,lr,tag,id from bb_run.in

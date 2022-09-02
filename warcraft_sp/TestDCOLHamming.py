@@ -41,9 +41,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/DCOLHamming{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/DCOLHamming{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logsDCOLHamming{}_index{}/".format(args.img_size, args.index)
+outputfile = "Rslt/DCOLHamming{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/DCOLHammingRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/DCOLHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/DCOLHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/DCOLHamming{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -75,7 +76,16 @@ model = DCOL.load_from_checkpoint(best_model_path,
     metadata=metadata, lr=lr, seed=seed, loss="hamming")
 
 
+regret_list = trainer.predict(model, data.test_dataloader())
 
+df = pd.DataFrame({"regret":regret_list[0].tolist()})
+df.index.name='instance'
+df ['model'] = 'DCOL'
+df['seed'] = seed
+df ['batch_size'] = batch_size
+df['lr'] =lr
+with open(regretfile, 'a') as f:
+    df.to_csv(f, header=f.tell()==0)
 
 ##### SummaryWrite ######################
 validresult = trainer.validate(model,datamodule=data)
