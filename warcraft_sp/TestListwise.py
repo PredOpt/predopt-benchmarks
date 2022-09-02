@@ -49,7 +49,7 @@ outputfile = "Rslt/Listwise{}seed{}_index{}.csv".format(args.img_size,seed, args
 regretfile = "Rslt/ListwiseRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
 ckpt_dir =  "ckpt_dir/Listwise{}seed{}_index{}/".format(args.img_size,seed, args.index)
 log_dir = "lightning_logs/Listwise{}seed{}_index{}/".format(args.img_size,seed, args.index)
-learning_curve_datafile = "LearningCurve/Listwise{}_growth{}_tau{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,growth,tau, lr,batch_size,seed, args.index)
+learning_curve_datafile = "LearningCurve/Listwise{}_growth{}_temperature{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,growth,tau, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -86,7 +86,7 @@ df = pd.DataFrame({"regret":regret_list[0].tolist()})
 df.index.name='instance'
 df ['model'] = 'Listwise'
 df['growth'] = growth
-df['margin'] = tau
+df['temperature'] = tau
 df['seed'] = seed
 df ['batch_size'] = batch_size
 df['lr'] =lr
@@ -99,7 +99,7 @@ testresult = trainer.test(model, datamodule=data)
 df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
 df ['model'] = 'Listwise'
 df['growth'] = growth
-df['margin'] = tau
+df['temperature'] = tau
 df['seed'] = seed
 df ['batch_size'] = batch_size
 df['lr'] =lr

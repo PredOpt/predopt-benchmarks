@@ -1,0 +1,22 @@
+	############
+#
+# Example submit file for vanilla job
+#
+############
+
+getenv = True
+request_cpus = 30
+request_memory = 64 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
+
+Universe       = vanilla
+Executable     = ./pairwise.sh
+Arguments      = $(modelname) $(imgsz) $(tau) $(growth) $(seed) $(lr) $(tag) $(id)
+
+input   = /dev/null
+#output  = ./out/img12run_$(id).out
+error    = ./err/pairwise_$(id).error
+log       = ./log/pairwise_$(id).condor_log
+
+Queue modelname,imgsz,tau,growth,seed,lr,tag,id from pairwise.in
