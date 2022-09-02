@@ -4,11 +4,12 @@ modelname=${1}
 imgsz=${2}
 sig=${3}
 nsamp=${4}
-lr=${5}
-tag= ${6}
-id=${7}
+seed=${5}
+lr=${6}
+tag= ${7}
+id=${8}
 
 source ~/.bashrc
 source warcraft_venv/bin/activate
-python Test${modelname}.py --img_size ${imgsz} --sigma ${sig} --num_samples ${nsamp} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/dporun_${id}.log
+python Test${modelname}.py --img_size ${imgsz} --sigma ${sig} --seed ${seed} --num_samples ${nsamp} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/dporun_${id}.log
 exit 0

@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./dpo_run.sh
-Arguments      = $(modelname) $(imgsz) $(sig) $(nsamp) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(imgsz) $(sig) $(nsamp) $(seed) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
 error    = ./err/onlyfyrun_$(id).error
 log       = ./log/onlyfyrun_$(id).condor_log
 
-Queue modelname,imgsz,sig,nsamp,lr,tag,id from dpo_run.in
+Queue modelname,imgsz,sig,nsamp,seded,lr,tag,id from dpo_run.in
