@@ -13,7 +13,7 @@ def regret_list(solver, y_hat,y_true, sol_true, minimize=False):
     mm = 1 if minimize else -1    
     sol_hat = batch_solve(solver,y_hat)
     
-    return (mm*(sol_hat - sol_true)*y_true).sum(1)
+    return ((mm*(sol_hat - sol_true)*y_true).sum(1)) /(( sol_true*y_true).sum(1))
 
 
 def regret_fn(solver, y_hat,y_true, sol_true, minimize=False):

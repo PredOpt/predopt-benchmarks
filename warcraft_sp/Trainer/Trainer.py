@@ -11,7 +11,7 @@ from Trainer.diff_layer import BlackboxDifflayer,SPOlayer, CvxDifflayer, IntoptD
 from comb_modules.dijkstra import get_solver
 from Trainer.utils import shortest_pathsolution, growcache, maybe_parallelize
 
-from Trainer.metric import normalized_regret
+from Trainer.metric import normalized_regret, regret_list, normalized_hamming
 from DPO import perturbations
 from DPO import fenchel_young as fy
 from imle.wrapper import imle
@@ -20,7 +20,7 @@ from imle.noise import SumOfGammaNoiseDistribution
 
 class twostage_baseline(pl.LightningModule):
     def __init__(self, metadata, model_name= "ResNet18", arch_params={}, neighbourhood_fn =  "8-grid",
-     lr=1e-1,  seed=20,loss="bce"):
+     lr=1e-1,  seed=20,loss="bce", validation_metric="regret"):
         """
         A class to implement two stage mse based baseline model and with test and validation module
         Args:
@@ -29,6 +29,7 @@ class twostage_baseline(pl.LightningModule):
             max_epoch: maximum number of epcohs
             seed: seed for reproducibility 
             loss: could be bce or mse
+            validation: which quantity to be monitored for validation, either regret or hamming
         """
         super().__init__()
         pl.seed_everything(seed)
@@ -38,14 +39,18 @@ class twostage_baseline(pl.LightningModule):
         )
         self.loss = loss
         self.lr = lr
+        self.validation_metric = validation_metric
+
         self.solver =   get_solver(neighbourhood_fn)#  ShortestPath(lambda_val=lambda_val, neighbourhood_fn= neighbourhood_fn)
 
     def forward(self,x):
         output = self.model(x)
         if self.loss=="bce":
             output = torch.sigmoid(output)
+        output = nn.ReLU()(output)
 
         return output
+
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -64,6 +69,7 @@ class twostage_baseline(pl.LightningModule):
             training_loss = criterion(output,flat_target).mean()
         self.log("train_loss",training_loss ,  on_step=True, on_epoch=True, )
         return training_loss 
+
     def validation_step(self, batch, batch_idx):
         input, label, true_weights = batch
         output = self(input)
@@ -76,7 +82,8 @@ class twostage_baseline(pl.LightningModule):
         ######### IN the original paper, it was torch.abs() instead of Relu #########
         # weights = relu_op(output.reshape(-1, output.shape[-1], output.shape[-1]))
         weights = output.reshape(-1, output.shape[-1], output.shape[-1])
-        shortest_path =  shortest_pathsolution(self.solver, weights)  
+        shortest_path =  shortest_pathsolution(self.solver, weights)
+
         #flat_target = label.view(label.size()[0], -1)
  
         
@@ -89,7 +96,7 @@ class twostage_baseline(pl.LightningModule):
 
         regret = normalized_regret(true_weights, label, shortest_path )   
 
-        Hammingloss = HammingLoss()(shortest_path, label, true_weights)
+        Hammingloss = normalized_hamming(true_weights, label, shortest_path )
 
         self.log("val_bce", bceloss, prog_bar=True, on_step=True, on_epoch=True,sync_dist=True )
         self.log("val_mse", mse, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True )
@@ -98,13 +105,7 @@ class twostage_baseline(pl.LightningModule):
 
         return {"val_mse":mse, "val_bce":bceloss,
              "val_regret":regret,"val_hammingloss":Hammingloss}
-    # def validation_epoch_end(self, outputs):
-    #     avg_regret = torch.stack([x["val_regret"] for x in outputs]).mean()
-    #     avg_mse = torch.stack([x["val_mse"] for x in outputs]).mean()
-        
-    #     self.log("ptl/val_regret", avg_regret)
-    #     self.log("ptl/val_mse", avg_mse)
-    #     # self.log("ptl/val_accuracy", avg_acc)
+
         
     def test_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -132,7 +133,7 @@ class twostage_baseline(pl.LightningModule):
 
         regret = normalized_regret(true_weights, label, shortest_path )   
 
-        Hammingloss = HammingLoss()(shortest_path, label, true_weights)
+        Hammingloss = normalized_hamming(true_weights, label, shortest_path ) 
 
         self.log("test_bce", bceloss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
         self.log("test_mse", mse, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True )
@@ -142,23 +143,35 @@ class twostage_baseline(pl.LightningModule):
         return {"test_mse":mse, "test_bce":bceloss,
              "test_regret":regret,"test_hammingloss":Hammingloss}
 
+
+    def predict_step(self, batch, batch_idx):
+        '''
+        I am using the the predict module to compute regret !
+        '''
+        input, label, true_weights = batch
+        output = self(input)
+        # output = torch.sigmoid(output)
+
+        if not len(output.shape) == 3:
+            output = output.view(label.shape)
+        weights = output.reshape(-1, output.shape[-1], output.shape[-1])
+        shortest_path =  shortest_pathsolution(self.solver, weights) 
+        regret = regret_list(true_weights, label, shortest_path ) 
+        return regret   
+
     def configure_optimizers(self):
         ############# Adapted from https://pytorch-lightning.readthedocs.io/en/stable/api/pytorch_lightning.core.LightningModule.html ###
         # REQUIRED
         # can return multiple optimizers and learning_rate schedulers
         # (LBFGS it is automatically supported, no need for closure function)
-        self.opt = torch.optim.Adam(self.parameters(), lr=self.lr)
-        self.reduce_lr_on_plateau = torch.optim.lr_scheduler.ReduceLROnPlateau(
-            self.opt,
-            mode='min',
-            factor=0.2,
-            patience=2,
-            min_lr=1e-6,
-            verbose=True
-        )
-
-        # return [self.opt], [self.reduce_lr_on_plateau]
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        if self.validation_metric=="regret":
+            monitor = "val_regret"
+        if self.validation_metric=="regret":
+            monitor = "val_hammingloss"
+        else:
+            raise Exception("Don't know what quantity to monitor")
+
         return {
                 "optimizer": optimizer,
                 "lr_scheduler": {
@@ -166,7 +179,7 @@ class twostage_baseline(pl.LightningModule):
             factor=0.2,
             patience=2,
             min_lr=1e-6),
-                    "monitor": "val_regret",
+                    "monitor": monitor,
                     # "frequency": "indicates how often the metric is updated"
                     # If "monitor" references validation metrics, then "frequency" should be set to a
                     # multiple of "trainer.check_val_every_n_epoch".
@@ -177,8 +190,10 @@ class twostage_baseline(pl.LightningModule):
 class Blackbox(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={},lambda_val=20., neighbourhood_fn =  "8-grid",
         lr=1e-1, seed=20,loss="hamming"):
+
+        validation_metric = loss
         super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
+        lr,  seed,loss, validation_metric)
         self.comb_layer =  BlackboxDifflayer(lambda_val=lambda_val, neighbourhood_fn= neighbourhood_fn)
 
         if loss=="hamming":
@@ -209,7 +224,7 @@ class SPO(twostage_baseline):
         lr,  seed,loss)
         self.comb_layer =  SPOlayer(neighbourhood_fn= neighbourhood_fn)
         ########### For SPO, irrespective of the final loss, the gradient would be same  #################################
-        self.loss_fn = HammingLoss()
+        self.loss_fn = RegretLoss()
 
 
     def forward(self,x):
@@ -240,10 +255,10 @@ class FenchelYoung(twostage_baseline):
         solver =   get_solver(neighbourhood_fn)
         self.fy_solver = lambda weights: shortest_pathsolution(solver, weights)
         ########### Like SPO, The gradient does not depend on the loss function  #################################
-        if loss=="hamming":
-            self.loss_fn = HammingLoss()
-        # if loss=="regret":
-        #     self.loss_fn = RegretLoss()
+        # if loss=="hamming":
+        #     self.loss_fn = HammingLoss()
+        # # if loss=="regret":
+        # #     self.loss_fn = RegretLoss()
 
     def forward(self,x):
         output = self.model(x)
@@ -266,8 +281,10 @@ class FenchelYoung(twostage_baseline):
 class IMLE(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, seed=20,loss="hamming",k=5, nb_iterations=100,nb_samples=1, 
-            input_noise_temperature=1.0, target_noise_temperature=1.0 ):
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn, lr,  seed,loss)
+            input_noise_temperature=1.0, target_noise_temperature=1.0):
+        
+        validation_metric = loss
+        super().__init__(metadata, model_name, arch_params, neighbourhood_fn, lr,  seed,loss, validation_metric)
         solver =   get_solver(neighbourhood_fn)
 
         target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
@@ -306,8 +323,9 @@ class IMLE(twostage_baseline):
 class DPO(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, seed=20,loss="hamming",sigma=0.1,num_samples=10 ):
+        validation_metric = loss
         super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
+        lr,  seed,loss, validation_metric)
         self.sigma = sigma
         self.num_samples = num_samples
         solver =   get_solver(neighbourhood_fn)
@@ -343,9 +361,10 @@ class DPO(twostage_baseline):
 
 class DCOL(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, seed=20,loss="hamming" ):
+        lr=1e-3, seed=20,loss="hamming"):
+        validation_metric = loss
         super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
+        lr,  seed,loss, validation_metric)
 
         if loss=="hamming":
             self.loss_fn = HammingLoss()
@@ -377,14 +396,15 @@ class DCOL(twostage_baseline):
 
 class IntOpt(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, seed=20,loss="hamming",thr=0.1,damping=1e-3, ):
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
-
+        lr=1e-3, seed=20,loss="hamming",thr=0.1,damping=1e-3):
+        validation_metric = loss
         if loss=="hamming":
+            
             self.loss_fn = HammingLoss()
         if loss=="regret":
             self.loss_fn = RegretLoss()
+        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
+        lr,  seed,loss,validation_metric)
         self.comb_layer = IntoptDifflayer(metadata["output_shape"],thr, damping) 
 
     def forward(self,x):

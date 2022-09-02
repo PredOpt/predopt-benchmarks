@@ -41,9 +41,10 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/BaselineBCE{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/BaselineBCE{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logs/BaselineBCE{}_index{}/".format(args.img_size, args.index)
+outputfile = "Rslt/BaselineBCE{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/BaselineBCE{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/BaselineBCE{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/BaselineBCE{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/BaselineBCE{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,lr,batch_size,seed,args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -72,6 +73,18 @@ trainer.fit(model, datamodule=data)
 best_model_path = checkpoint_callback.best_model_path
 model = twostage_baseline.load_from_checkpoint(best_model_path,
     metadata=metadata, lr=lr, seed=seed,loss="bce")
+
+regret_list = trainer.predict(model, data.test_dataloader())
+
+df = pd.DataFrame({"regret":regret_list[0].tolist()})
+df.index.name='instance'
+df ['model'] = 'BaselineBCE'
+df['seed'] = seed
+df ['batch_size'] = batch_size
+df['lr'] =lr
+with open(regretfile, 'a') as f:
+    df.to_csv(f, header=f.tell()==0)
+
 
 ##### SummaryWrite ######################
 validresult = trainer.validate(model,datamodule=data)
