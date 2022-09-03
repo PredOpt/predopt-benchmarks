@@ -20,16 +20,16 @@ import pytorch_lightning as pl
 
 
 class baseline_mse(pl.LightningModule):
-    def __init__(self,solver,lr=1e-1,mode='sigmoid',seed=0):
+    def __init__(self,solver,lr=1e-1,mode='sigmoid',n_layers=2,seed=0):
         super().__init__()
         pl.seed_everything(seed)
         if mode=='sigmoid':
-            self.model = cora_net(n_layers=2)
+            self.model = cora_net(n_layers= n_layers)
             
         elif mode=="batchnorm" :
-            self.model = cora_normednet(n_layers=2)
+            self.model = cora_normednet(n_layers= n_layers)
         elif mode=="linear":
-            self.model = cora_nosigmoidnet(n_layers=2)
+            self.model = cora_nosigmoidnet(n_layers= n_layers)
         self.mode= mode
 
         self.lr = lr
@@ -118,8 +118,8 @@ class baseline_mse(pl.LightningModule):
             }}
 
 class baseline_bce(baseline_mse):
-    def __init__(self,solver,lr=1e-1,mode='sigmoid',seed=0):
-            super().__init__(solver,lr,mode,seed) 
+    def __init__(self,solver,lr=1e-1,mode='sigmoid',n_layers=2,seed=0):
+            super().__init__(solver,lr,mode,n_layers,seed) 
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
@@ -130,8 +130,8 @@ class baseline_bce(baseline_mse):
 
 
 class SPO(baseline_mse):
-    def __init__(self,solver, lr=1e-1,mode='sigmoid',seed=0):
-        super().__init__(solver,lr,mode, seed)
+    def __init__(self,solver, lr=1e-1,mode='sigmoid',n_layers=2,seed=0):
+        super().__init__(solver,lr,mode,n_layers,seed)
         self.layer = SPOlayer(solver)
         # self.automatic_optimization = False
     def training_step(self, batch, batch_idx):
@@ -142,8 +142,8 @@ class SPO(baseline_mse):
         return loss
 
 class DBB(baseline_mse):
-    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='sigmoid', seed=0):
-        super().__init__(solver,lr,mode, seed)
+    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='sigmoid',n_layers=2, seed=0):
+        super().__init__(solver,lr,mode,n_layers,seed)
         self.layer = DBBlayer(solver,lambda_val=lambda_val)
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
@@ -154,10 +154,10 @@ class DBB(baseline_mse):
 
 class FenchelYoung(baseline_mse):
     def __init__(self,solver,sigma=0.1,num_samples=10, 
-        lr=1e-1,mode='sigmoid', seed=0):
+        lr=1e-1,mode='sigmoid',n_layers=2, seed=0):
         self.sigma = sigma
         self.num_samples = num_samples
-        super().__init__(solver,lr,mode, seed)
+        super().__init__(solver,lr,mode,n_layers,seed)
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
         y_hat =  self(x).squeeze()
@@ -185,9 +185,9 @@ class FenchelYoung(baseline_mse):
 class IMLE(baseline_mse):
     def __init__(self,solver,k=5, nb_iterations=100,nb_samples=1, 
             input_noise_temperature=1.0, target_noise_temperature=1.0, 
-            lr=1e-1,mode='sigmoid', seed=0):
+            lr=1e-1,mode='sigmoid',n_layers=2, seed=0):
 
-        super().__init__(solver,lr,mode, seed) 
+        super().__init__(solver,lr,mode,n_layers,seed) 
 
         self.target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
         self.noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
@@ -223,10 +223,10 @@ class IMLE(baseline_mse):
 from Trainer.RankingLosses import PointwiseLoss, ListwiseLoss, PairwisediffLoss, PairwiseLoss
 class CachingPO(baseline_mse):
     def __init__(self,solver,init_cache,tau=1.,growth=0.1,loss="listwise",
-        lr=1e-1,mode='sigmoid', seed=0):
+        lr=1e-1,mode='sigmoid',n_layers=2, seed=0):
         '''tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
         '''
-        super().__init__(solver,lr,mode, seed) 
+        super().__init__(solver,lr,mode,n_layers,seed) 
         # self.save_hyperparameters()
         if loss=="pointwise":
             self.loss_fn = PointwiseLoss()

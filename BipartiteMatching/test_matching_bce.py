@@ -23,8 +23,10 @@ parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
 parser.add_argument("--max_epochs", type=int, help="maximum bumber of epochs", default= 50, required=False)
 parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=False)
 parser.add_argument("--index", type=int, help="index", default= 50, required=False)
+parser.add_argument("--nlayers", type=int, help="number of layers", default= 2, required=False)
 args = parser.parse_args()
 ###################################### Hyperparams #########################################
+n_layers = args.nlayers
 lr = args.lr
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
@@ -39,13 +41,12 @@ def seed_all(seed):
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-###################################### Hyperparams #########################################
 ################## Define the outputfile
-outputfile = "Rslt/BCE_matching{}_index{}.csv".format(args.instance, args.index)
-regretfile = "Rslt/BCE_matchingRegret{}_index{}.csv".format(args.instance, args.index)
-ckpt_dir =  "ckpt_dir/BCE{}_index{}/".format(args.instance, args.index)
-log_dir = "lightning_logs/BCE{}_index{}/".format(args.instance, args.index)
-learning_curve_datafile = "LearningCurve/BCE{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,lr,batch_size,seed, args.index)
+outputfile = "Rslt/BCE_matching{}_nlayer{}_index{}.csv".format(args.instance,n_layers, args.index)
+regretfile = "Rslt/BCE_matchingRegret{}_nlayer{}_index{}.csv".format(args.instance,n_layers, args.index)
+ckpt_dir =  "ckpt_dir/BCE{}_nlayer{}_index{}/".format(args.instance,n_layers, args.index)
+log_dir = "lightning_logs/BCE{}_nlayer{}_index{}/".format(args.instance,n_layers, args.index)
+learning_curve_datafile = "LearningCurve/BCE{}_lr{}_batchsize{}_seed{}_nlayer{}_index{}.csv".format(args.instance,lr,batch_size,seed, n_layers, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 solver = bmatching_diverse(**params)
@@ -68,7 +69,7 @@ for seed in range(10):
 
     trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback] )
 
-    model = baseline_bce(solver,lr=lr,seed=seed)
+    model = baseline_bce(solver,n_layers=n_layers,lr=lr,seed=seed)
     trainer.fit(model, datamodule=data)
 
     best_model_path = checkpoint_callback.best_model_path
@@ -76,7 +77,7 @@ for seed in range(10):
 
 
 
-    model = baseline_bce.load_from_checkpoint(best_model_path ,solver=solver,lr=lr,seed=seed)    
+    model = baseline_bce.load_from_checkpoint(best_model_path ,solver=solver,n_layers=n_layers,lr=lr,seed=seed)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     
