@@ -6,18 +6,15 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
-from Trainer.PO_models import IMLE
+from Trainer.PO_models import IntOpt
 from Trainer.data_utils import KnapsackDataModule
 from pytorch_lightning import loggers as pl_loggers
 import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--capacity", type=int, help="capacity of knapsack", default= 12)
-parser.add_argument("--input_noise_temp", type=float, help="input_noise_temperature parameter", default= 1., required=False)
-parser.add_argument("--target_noise_temp", type=float, help="target_noise_temperature parameter", default= 1., required=False)
-parser.add_argument("--nb_samples", type=int, help="number of samples", default= 1, required=False)
-parser.add_argument("--nb_iterations", type=int, help="number of iterations", default= 10, required=False)
-parser.add_argument("--k", type=int, help="parameter k", default= 10, required=False)
+parser.add_argument("--thr", type=float, help="threshold parameter", default= 1e-6)
+parser.add_argument("--damping", type=float, help="damping parameter", default= 1e-8)
 parser.add_argument("--lr", type=float, help="learning rate", default= 5e-4, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
@@ -37,21 +34,19 @@ def seed_all(seed):
     random.seed(seed)
 ############### Configuration
 ###################################### Hyperparams #########################################
-nb_iterations ,nb_samples= args.nb_iterations, args.nb_samples
-input_noise_temperature, target_noise_temperature = args.input_noise_temp, args.target_noise_temp
-k = args.k
+thr = args.thr
+damping = args.damping
 lr = args.lr
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
 seed = args.seed
 capacity =  args.capacity
 ################## Define the outputfile
-outputfile = "Rslt/IMLE_index{}.csv".format( args.index)
-regretfile = "Rslt/IMLE_Regretindex{}.csv".format( args.index)
-ckpt_dir =  "ckpt_dir/IMLE_index{}/".format( args.index)
-log_dir = "lightning_logs/IMLE_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/IMLEcapa{}_inp{}_target{}_k{}_niter{}_lr{}_batchsize{}_index{}.csv".format(capacity,input_noise_temperature, target_noise_temperature ,
-k, nb_iterations,lr,batch_size, args.index)
+outputfile = "Rslt/Intopt_index{}.csv".format( args.index)
+regretfile = "Rslt/Intopt_Regretindex{}.csv".format( args.index)
+ckpt_dir =  "ckpt_dir/Intopt_index{}/".format( args.index)
+log_dir = "lightning_logs/Intopt_index{}/".format( args.index)
+learning_curve_datafile = "LearningCurve/Intoptcapa{}_thr{}_damp{}_lr{}_batchsize{}_index{}.csv".format(capacity,thr,damping,lr,batch_size, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -73,27 +68,18 @@ for seed in range(10):
             mode="min")
     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
     trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
-    model =  IMLE(weights,capacity,n_items, 
-            k=k, nb_iterations= nb_iterations,nb_samples= nb_samples, 
-            input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, 
-            lr=lr, seed=seed)
+    model =  IntOpt(weights,capacity,n_items, thr=thr, damping=damping, lr=lr, seed=seed)
     trainer.fit(model, datamodule=data)
     best_model_path = checkpoint_callback.best_model_path
-    model = IMLE.load_from_checkpoint(best_model_path,
-        weights = weights,capacity= capacity,n_items = n_items,
-        k=k, nb_iterations= nb_iterations,nb_samples= nb_samples, 
-            input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, 
-            lr=lr, seed=seed)
+    model = IntOpt.load_from_checkpoint(best_model_path,
+        weights = weights,capacity= capacity,n_items = n_items,thr=thr, damping=damping,lr=lr, seed=seed)
     ##### SummaryWrite ######################
     validresult = trainer.validate(model,datamodule=data)
     testresult = trainer.test(model, datamodule=data)
     df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
-    df ['model'] = 'IMLE'
-    df['k'] = k
-    df['input_noise_temperature'] = input_noise_temperature
-    df['target_noise_temperature'] = target_noise_temperature
-    df['nb_iterations'] = nb_iterations
-    df['nb_samples'] = nb_samples
+    df ['model'] = 'Intopt'
+    df['thr'] =  thr
+    df['damping'] = damping
     df['seed'] = seed
     df ['batch_size'] = batch_size
     df['lr'] =lr
@@ -107,12 +93,9 @@ for seed in range(10):
 
     df = pd.DataFrame({"regret":regret_list[0].tolist()})
     df.index.name='instance'
-    df ['model'] = 'IMLE'
-    df['k'] = k
-    df['input_noise_temperature'] = input_noise_temperature
-    df['target_noise_temperature'] = target_noise_temperature
-    df['nb_iterations'] = nb_iterations
-    df['nb_samples'] = nb_samples
+    df ['model'] = 'Intopt'
+    df['thr'] =  thr
+    df['damping'] = damping
     df['seed'] = seed
     df ['batch_size'] = batch_size
     df['lr'] =lr
@@ -145,7 +128,7 @@ for logs in version_dirs:
 
 df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
-df['model'] = 'IMLE'
+df['model'] = 'Intopt'
 df.to_csv(learning_curve_datafile)
 
 

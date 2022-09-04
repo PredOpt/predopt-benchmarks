@@ -44,7 +44,7 @@ outputfile = "Rslt/Pointwise_index{}.csv".format( args.index)
 regretfile = "Rslt/Pointwise_Regretindex{}.csv".format( args.index)
 ckpt_dir =  "ckpt_dir/Pointwise_index{}/".format( args.index)
 log_dir = "lightning_logs/Pointwise_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/Pointwise_lr{}_batchsize{}_growth{}_index{}.csv".format(lr,batch_size,growth, args.index)
+learning_curve_datafile = "LearningCurve/Pointwisecapa{}_lr{}_batchsize{}_growth{}_index{}.csv".format(capacity,lr,batch_size,growth, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 

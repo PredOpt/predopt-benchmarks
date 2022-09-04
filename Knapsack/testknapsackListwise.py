@@ -46,7 +46,7 @@ outputfile = "Rslt/Listwise_index{}.csv".format( args.index)
 regretfile = "Rslt/Listwise_Regretindex{}.csv".format( args.index)
 ckpt_dir =  "ckpt_dir/Listwise_index{}/".format( args.index)
 log_dir = "lightning_logs/Listwise_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/Listwise_temp{}_lr{}_batchsize{}_growth{}_index{}.csv".format(lr,temperature,batch_size,growth, args.index)
+learning_curve_datafile = "LearningCurve/Listwisecapa{}_temp{}_lr{}_batchsize{}_growth{}_index{}.csv".format(capacity,lr,temperature,batch_size,growth, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 

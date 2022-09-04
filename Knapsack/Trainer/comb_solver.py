@@ -1,5 +1,13 @@
 from ortools.linear_solver import pywraplp
 import numpy as np
+import torch
+import torch.nn as nn
+import cvxpy as cp
+import cvxpylayers
+from cvxpylayers.torch import CvxpyLayer
+from qpth.qp import QPFunction
+from intopt.intopt_model import IPOfunc
+
 class knapsack_solver:
     def __init__(self, weights,capacity,n_items):
         self.weights=  weights
@@ -34,3 +42,76 @@ class knapsack_solver:
             return sol
         else:
             raise Exception("No soluton found")
+
+class cvx_knapsack_solver(nn.Module):
+    def __init__(self, weights,capacity,n_items, mu=1.):
+        super().__init__()
+        self.weights=  weights
+        self.capacity = capacity
+        self.n_items = n_items  
+        A = weights.reshape(1,-1).astype(np.float32)
+        b = capacity
+        x = cp.Variable(n_items)
+        c = cp.Parameter(n_items)
+        constraints = [x >= 0,x<=1,A @ x <= b]  
+        objective = cp.Maximize(c @ x - mu*cp.pnorm(x, p=2))  #cp.pnorm(A @ x - b, p=1)
+        problem = cp.Problem(objective, constraints)
+        self.layer = CvxpyLayer(problem, parameters=[c], variables=[x])
+    def forward(self,costs):
+        sol, = self.layer(costs)
+
+        return sol
+
+
+class qpt_knapsack_solver(nn.Module):
+    def __init__(self, weights,capacity,n_items, mu=1.):
+        super().__init__()
+        self.weights=  weights
+        self.capacity = capacity
+        self.n_items = n_items  
+        A = weights.reshape(1,-1).astype(np.float32)
+        b = np.array([capacity]).astype(np.float32)
+        A_lb  = -np.eye(n_items).astype(np.float32)
+        b_lb = np.zeros(n_items).astype(np.float32)
+        A_ub  = np.eye(n_items).astype(np.float32)
+        b_ub = np.ones(n_items).astype(np.float32)
+
+        G = np.concatenate((A_lb, A_ub   ), axis=0).astype(np.float32)
+        h = np.concatenate(( b_lb, b_ub )).astype(np.float32)
+        Q =  mu*torch.eye(n_items).float()
+        self.A, self.b,self.G, self.h, self.Q =  torch.from_numpy(A), torch.from_numpy(b),  torch.from_numpy(G),  torch.from_numpy(h),  Q
+        self.layer = QPFunction()
+    def forward(self,costs):
+        A,b,G,h,  Q = self.A, self.b,self.G, self.h, self.Q
+        sol = self.layer(Q,-costs,G,h,A,b)
+        return sol
+
+class intopt_knapsack_solver(nn.Module):
+    def __init__(self, weights,capacity,n_items, thr=0.1,damping=1e-3):
+        super().__init__()
+        self.weights=  weights
+        self.capacity = capacity
+        self.n_items = n_items  
+        A = weights.reshape(1,-1).astype(np.float32)
+        b = np.array([capacity]).astype(np.float32)
+        A_lb  = -np.eye(n_items).astype(np.float32)
+        b_lb = np.zeros(n_items).astype(np.float32)
+        A_ub  = np.eye(n_items).astype(np.float32)
+        b_ub = np.ones(n_items).astype(np.float32)
+
+        G = np.concatenate((A_lb, A_ub   ), axis=0).astype(np.float32)
+        h = np.concatenate(( b_lb, b_ub )).astype(np.float32)
+        self.A, self.b,self.G, self.h =  torch.from_numpy(A), torch.from_numpy(b),  torch.from_numpy(G),  torch.from_numpy(h)
+        self.thr =thr
+        self.damping = damping
+        self.layer = IPOfunc(self.A, self.b,self.G, self.h,thr,damping)
+    def forward(self,costs):
+        return self.layer(-costs)
+
+        # sol = [self.layer(-cost) for cost in costs]
+
+
+
+
+        # return torch.stack(sol)
+            

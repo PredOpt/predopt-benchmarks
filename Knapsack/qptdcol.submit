@@ -1,0 +1,22 @@
+	############
+#
+# Example submit file for vanilla job
+#
+############
+
+getenv = True
+request_cpus = 0
+request_memory = 6 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
+
+Universe       = vanilla
+Executable     = ./qptdcol.sh
+Arguments      = $(modelname) $(capacity) $(lr) $(tag) $(id)
+
+input   = /dev/null
+#output  = ./out/img12run_$(id).out
+error    = ./err/Knapsackqptdcolrun_$(id).error
+log       = ./log/Knapsackqptdcolrun_$(id).condor_log
+
+Queue modelname,capacity,lr,tag,id from qptdcol.in

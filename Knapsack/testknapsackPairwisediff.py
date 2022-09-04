@@ -44,7 +44,7 @@ outputfile = "Rslt/Pairwise_Difference_index{}.csv".format( args.index)
 regretfile = "Rslt/Pairwise_Difference_Regretindex{}.csv".format( args.index)
 ckpt_dir =  "ckpt_dir/Pairwise_Difference_index{}/".format( args.index)
 log_dir = "lightning_logs/Pairwise_Difference_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/Pairwise_Difference_lr{}_batchsize{}_growth{}_index{}.csv".format(lr,batch_size,growth, args.index)
+learning_curve_datafile = "LearningCurve/Pairwise_Differencecapa{}_lr{}_batchsize{}_growth{}_index{}.csv".format(capacity,lr,batch_size,growth, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 

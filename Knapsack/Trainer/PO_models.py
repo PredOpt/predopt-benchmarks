@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from Trainer.comb_solver import knapsack_solver
+from Trainer.comb_solver import knapsack_solver, cvx_knapsack_solver, qpt_knapsack_solver, intopt_knapsack_solver
 from Trainer.utils import batch_solve, regret_fn,regret_list,  growpool_fn
 from Trainer.diff_layer import SPOlayer, DBBlayer
 
@@ -143,7 +143,6 @@ class IMLE(twostage_mse):
                     nb_samples= nb_samples)
     def training_step(self, batch, batch_idx):
         x,y,sol = batch
-        solver = self.solver
         y_hat =  self(x).squeeze()
         sol_hat = self.layer(y_hat ) 
         # print("shape of sol")
@@ -151,7 +150,48 @@ class IMLE(twostage_mse):
         loss = ((sol - sol_hat)*y).sum(-1).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+class DCOL(twostage_mse):
+    def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=1):
+        super().__init__(weights,capacity,n_items,lr,seed)
+        self.comblayer = cvx_knapsack_solver(weights,capacity,n_items,mu=mu)
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        y_hat =  self(x).squeeze()
+        sol_hat = self.comblayer(y_hat)
+        loss = ((sol - sol_hat)*y).sum(-1).mean()
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss    
 
+
+class QPTL(twostage_mse):
+    def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=1):
+        super().__init__(weights,capacity,n_items,lr,seed)
+        self.comblayer = qpt_knapsack_solver(weights,capacity,n_items,mu=mu)
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        y_hat =  self(x).squeeze()
+        sol_hat = self.comblayer(y_hat)
+        loss = ((sol - sol_hat)*y).sum(-1).mean()
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss  
+
+class IntOpt(twostage_mse):
+    def __init__(self,weights,capacity,n_items,thr=0.1,damping=1e-3,lr=1e-1,seed=1):
+        super().__init__(weights,capacity,n_items,lr,seed)
+        self.comblayer = intopt_knapsack_solver(weights,capacity,n_items, thr= thr,damping= damping)
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        y_hat =  self(x).squeeze()
+        # sol_hat = self.comblayer(y_hat)
+
+        loss = 0
+        for i in range(len(y_hat)):
+            sol_hat = self.comblayer(y_hat[i])
+            loss += ((sol[i] - sol_hat)*y[i]).sum()
+
+        loss /= len(y_hat)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss  
 
 from Trainer.RankingLosses import PointwiseLoss, ListwiseLoss, PairwisediffLoss, PairwiseLoss
 class CachingPO(twostage_mse):
@@ -187,3 +227,4 @@ class CachingPO(twostage_mse):
         loss = self.loss_fn(y_hat,y,sol,self.cache)
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss 
+

@@ -46,7 +46,7 @@ outputfile = "Rslt/FY_index{}.csv".format( args.index)
 regretfile = "Rslt/FY_Regretindex{}.csv".format( args.index)
 ckpt_dir =  "ckpt_dir/FY_index{}/".format( args.index)
 log_dir = "lightning_logs/FY_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/FY_sigma{}_nsamp{}_lr{}_batchsize{}_index{}.csv".format(sigma,num_samples, lr,batch_size, args.index)
+learning_curve_datafile = "LearningCurve/FYcapa{}_sigma{}_nsamp{}_lr{}_batchsize{}_index{}.csv".format(capacity,sigma,num_samples, lr,batch_size, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 

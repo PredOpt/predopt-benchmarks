@@ -46,7 +46,7 @@ outputfile = "Rslt/Pairwise_index{}.csv".format( args.index)
 regretfile = "Rslt/Pairwise_Regretindex{}.csv".format( args.index)
 ckpt_dir =  "ckpt_dir/Pairwise_index{}/".format( args.index)
 log_dir = "lightning_logs/Pairwise_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/Pairwise_margin{}_lr{}_batchsize{}_growth{}_index{}.csv".format(lr,margin,batch_size,growth, args.index)
+learning_curve_datafile = "LearningCurve/Pairwisecapa{}_margin{}_lr{}_batchsize{}_growth{}_index{}.csv".format(lr,margin,batch_size,growth, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 

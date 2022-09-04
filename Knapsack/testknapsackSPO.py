@@ -42,7 +42,7 @@ outputfile = "Rslt/SPO_index{}.csv".format( args.index)
 regretfile = "Rslt/SPO_Regretindex{}.csv".format( args.index)
 ckpt_dir =  "ckpt_dir/SPO_index{}/".format( args.index)
 log_dir = "lightning_logs/SPO_index{}/".format( args.index)
-learning_curve_datafile = "LearningCurve/SPO_lr{}_batchsize{}_index{}.csv".format(lr,batch_size, args.index)
+learning_curve_datafile = "LearningCurve/SPOcapa{}_lr{}_batchsize{}_index{}.csv".format(capacity,lr,batch_size, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
