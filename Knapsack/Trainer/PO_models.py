@@ -105,15 +105,6 @@ class multilayer_mse(twostage_mse):
         self.model = nn.Sequential(*layers)
     
 
-    def training_step(self, batch, batch_idx):
-        x,y,sol = batch
-        solver = self.solver
-        y_hat =  self(x).squeeze()
-        loss =  self.layer(y_hat, y,sol ) 
-
-    
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss
 
 class SPO(twostage_mse):
     def __init__(self,weights,capacity,n_items,lr=1e-1,seed=1):
