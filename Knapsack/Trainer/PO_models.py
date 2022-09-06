@@ -81,7 +81,39 @@ class twostage_mse(pl.LightningModule):
                     "monitor": "val_regret",
                 },
             }
+class multilayer_mse(twostage_mse):
+    def __init__(self,weights,capacity,n_items,lr=1e-1,seed=1, n_layers=3, n_hidden=4):
+        super().__init__(weights,capacity,n_items,lr,seed)
+        
+        layers = []
+        # input layer
+        layers.append(nn.Sequential(
+            nn.Linear(8, n_hidden),
+            nn.ReLU()
+            ))
+        # hidden layers
+        for _ in range(n_layers -2) :
+            layers.append(nn.Sequential(
+                nn.Linear(n_hidden, n_hidden),
+                nn.ReLU()
+            ))
+        # output layer
+        layers.append(nn.Sequential(
+            nn.Linear(n_hidden, 1)
+        ))
+        
+        self.model = nn.Sequential(*layers)
+    
 
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        solver = self.solver
+        y_hat =  self(x).squeeze()
+        loss =  self.layer(y_hat, y,sol ) 
+
+    
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
 
 class SPO(twostage_mse):
     def __init__(self,weights,capacity,n_items,lr=1e-1,seed=1):
