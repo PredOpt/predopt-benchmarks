@@ -108,8 +108,8 @@ for seed in range(10):
     df['lr'] = lr
     df['seed']= seed
 
-    with open(outputfile, 'a') as f:
-            df.to_csv(f, header=f.tell()==0)
+    # with open(outputfile, 'a') as f:
+    #         df.to_csv(f, header=f.tell()==0)
     print("test result")
     print(testresult)
 
