@@ -2,10 +2,11 @@
 
 modelname=${1}
 imgsz=${2}
-mu=${3}
-lr=${4}
-tag= ${5}
-id=${6}
+seed=${3}
+mu=${4}
+lr=${5}
+tag= ${6}
+id=${7}
 echo ${tag}
 
 source ~/.bashrc
