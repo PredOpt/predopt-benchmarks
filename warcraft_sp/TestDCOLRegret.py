@@ -15,6 +15,7 @@ from pytorch_lightning.callbacks import ModelCheckpoint
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--img_size", type=int, help="size of image in one dimension", default= 12)
+parser.add_argument("--mu", type=float, help="mu Paraemeter", default= 1e-4, required=False)
 parser.add_argument("--lr", type=float, help="learning rate", default= 5e-4, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
@@ -36,6 +37,7 @@ def seed_all(seed):
 img_size = "{}x{}".format(args.img_size, args.img_size)
 ###################################### Hyperparams #########################################
 lr = args.lr
+mu = args.mu
 batch_size  = args.batch_size
 max_epochs = args.max_epochs
 seed = args.seed
@@ -45,7 +47,7 @@ outputfile = "Rslt/DCOLRegret{}seed{}_index{}.csv".format(args.img_size,seed, ar
 regretfile = "Rslt/DCOLRegretRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
 ckpt_dir =  "ckpt_dir/DCOLRegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
 log_dir = "lightning_logs/DCOLRegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
-learning_curve_datafile = "LearningCurve/DCOLRegret{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr,batch_size,seed, args.index)
+learning_curve_datafile = "LearningCurve/DCOLRegret{}_mu{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,mu, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -69,11 +71,11 @@ tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
 trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
 # trainer = pl.Trainer( accelerator="gpu",  strategy="ddp",
 # max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
-model =  DCOL(metadata=metadata, lr=lr, seed=seed, loss="regret")
+model =  DCOL(metadata=metadata, lr=lr, seed=seed,mu=mu, loss="regret")
 trainer.fit(model, datamodule=data)
 best_model_path = checkpoint_callback.best_model_path
 model = DCOL.load_from_checkpoint(best_model_path,
-    metadata=metadata, lr=lr, seed=seed, loss="regret")
+    metadata=metadata, lr=lr, seed=seed,mu=mu, loss= "regret")
 
 regret_list = trainer.predict(model, data.test_dataloader())
 
@@ -82,6 +84,7 @@ df.index.name='instance'
 df ['model'] = 'DCOL'
 df['seed'] = seed
 df ['batch_size'] = batch_size
+df ['mu'] = mu
 df['lr'] =lr
 with open(regretfile, 'a') as f:
     df.to_csv(f, header=f.tell()==0)
@@ -95,6 +98,7 @@ df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
 df ['model'] = 'DCOL'
 df['seed'] = seed
 df ['batch_size'] = batch_size
+df ['mu'] = mu
 df['lr'] =lr
 with open(outputfile, 'a') as f:
     df.to_csv(f, header=f.tell()==0)

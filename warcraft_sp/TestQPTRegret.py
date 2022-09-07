@@ -43,11 +43,11 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/QPTLRegret{}seed{}_index{}.csv".format(args.img_size, args.index)
-regretfile = "Rslt/QPTLRegretRegret{}seed{}_index{}.csv".format(args.img_size, args.index)
-ckpt_dir =  "ckpt_dir/QPTLRegret{}seed{}_index{}/".format(args.img_size, args.index)
-log_dir = "lightning_logs/QPTLRegret{}seed{}_index{}/".format(args.img_size, args.index)
-learning_curve_datafile = "LearningCurve/QPTLRegret{}_lr{}_mu{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr, mu, batch_size,seed, args.index)
+outputfile = "Rslt/QPTLRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/QPTLRegretRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+ckpt_dir =  "ckpt_dir/QPTLRegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
+log_dir = "lightning_logs/QPTLRegret{}seed{}_index{}/".format(args.img_size,seed, args.index)
+learning_curve_datafile = "LearningCurve/QPTLRegret{}_mu{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size,  mu, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 

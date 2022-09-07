@@ -42,7 +42,7 @@ seed = args.seed
 
 ################## Define the outputfile
 outputfile = "Rslt/BaselineMSE{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
-regretfile = "Rslt/BaselineMSE{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/BaselineMSERegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
 ckpt_dir =  "ckpt_dir/BaselineMSE{}seed{}_index{}/".format(args.img_size,seed, args.index)
 log_dir = "lightning_logs/BaselineMSE{}seed{}_index{}/".format(args.img_size,seed, args.index)
 learning_curve_datafile = "LearningCurve/BaselineMSE{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr,batch_size,seed, args.index)

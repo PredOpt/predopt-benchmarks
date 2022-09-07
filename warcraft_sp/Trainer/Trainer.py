@@ -361,7 +361,7 @@ class DPO(twostage_baseline):
 
 class DCOL(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, seed=20,loss="hamming"):
+        lr=1e-3, seed=20,loss="hamming",mu=1e-3):
         validation_metric = loss
         super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
         lr,  seed,loss, validation_metric)
@@ -370,7 +370,7 @@ class DCOL(twostage_baseline):
             self.loss_fn = HammingLoss()
         if loss=="regret":
             self.loss_fn = RegretLoss()
-        self.comb_layer = CvxDifflayer(metadata["output_shape"]) 
+        self.comb_layer = CvxDifflayer(metadata["output_shape"], mu) 
         print("-> meta data size", metadata["input_image_size"], 
         metadata["output_features"], metadata["output_shape"] )
 
@@ -384,12 +384,18 @@ class DCOL(twostage_baseline):
         output = self(input)
         
         weights = output.reshape(-1, output.shape[-1], output.shape[-1])
-        # shortest_path = self.comb_layer(weights)
         shortest_path = (maybe_parallelize(self.comb_layer, arg_list=list(weights)))
         shortest_path = torch.stack(shortest_path)
-
-
+        # print("Path")
+        # print(shortest_path[0].shape)
+        # for ii in range(len(weights)):
+        #     weight = weights[ii]
+        #     shortest_path = self.comb_layer(weight)
+        #     loss  += self.loss_fn(shortest_path, label[ii], true_weights[ii])
         training_loss = self.loss_fn(shortest_path, label, true_weights)
+
+
+        # training_loss = loss #self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
@@ -458,16 +464,9 @@ class QPTL(twostage_baseline):
         weights = output.reshape(-1, output.shape[-1], output.shape[-1])
         shortest_path = (maybe_parallelize(self.comb_layer, arg_list=list(weights)))
         shortest_path = torch.stack(shortest_path)
-        # print("Path")
-        # print(shortest_path[0].shape)
-        # for ii in range(len(weights)):
-        #     weight = weights[ii]
-        #     shortest_path = self.comb_layer(weight)
-        #     loss  += self.loss_fn(shortest_path, label[ii], true_weights[ii])
         training_loss = self.loss_fn(shortest_path, label, true_weights)
 
 
-        # training_loss = loss #self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 

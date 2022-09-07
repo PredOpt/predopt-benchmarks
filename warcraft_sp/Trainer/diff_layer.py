@@ -433,13 +433,13 @@ class CvxDifflayer(nn.Module):
         expanded_c = torch.zeros(V)
         expanded_c [self.non_zero_edge_idx ] = weights_flatten
    
-        print(expanded_c[0:10])
+        # print(expanded_c[0:10])
 
-        print(expanded_c[10:20])
+        # print(expanded_c[10:20])
 
-        print(expanded_c[100:120])
+        # print(expanded_c[100:120])
 
-        print(expanded_c[450:480])        
+        # print(expanded_c[450:480])        
 
         # sol = layer(Incidence_mat_trch ,Incidence_mat_pos_trch,
         # b_trch, weights.view(weights.shape[-1]*weights.shape[-1]) )
@@ -493,13 +493,13 @@ class QptDifflayer(nn.Module):
         weights_flatten = weights.view(weights.shape[-1]*weights.shape[-1])
         expanded_c = torch.zeros(V)
         expanded_c[self.non_zero_edge_idx ] = weights_flatten
-        print(expanded_c[0:10])
+        # print(expanded_c[0:10])
 
-        print(expanded_c[10:20])
+        # print(expanded_c[10:20])
 
-        print(expanded_c[100:120])
+        # print(expanded_c[100:120])
 
-        print(expanded_c[450:480])  
+        # print(expanded_c[450:480])  
         Q =   self.mu*torch.eye(A_trch.shape[1]).float()
 
         sol = self.solver(Q,
