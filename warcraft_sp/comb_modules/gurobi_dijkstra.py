@@ -158,7 +158,8 @@ def ILP_reformulated(matrix):
 
     model = gp.Model()
     model.setParam('OutputFlag', 0)
-    x = model.addMVar(shape=A.shape[1], vtype=gp.GRB.BINARY, name="x")
+    # x = model.addMVar(shape=A.shape[1], vtype=gp.GRB.BINARY, name="x")
+    x = model.addMVar(shape=A.shape[1], lb=0.0, ub=1.0, vtype=gp.GRB.CONTINUOUS, name="x")
     model.setObjective(c @x, gp.GRB.MINIMIZE)
     model.addConstr(A @ x == b, name="eq")
     model.optimize()

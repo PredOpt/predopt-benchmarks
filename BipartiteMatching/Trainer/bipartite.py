@@ -6,7 +6,7 @@ from tqdm.auto import tqdm
 import sys 
 from ortools.graph import pywrapgraph
 from ortools.linear_solver import pywraplp
-
+import torch
 
 def linearobj(x,v, **params):
     return 
@@ -86,36 +86,72 @@ class bmatching_diverse:
         #solver.Clear()
         return solution.reshape(-1)
 
-def get_qpt_matrices(match_subs, p=0.25, q=0.25, **kwargs):
-    # we only have G * x <= h
-    
-    # Matching
-    N1 = np.zeros((50,2500))
-    N2 = np.zeros_like(N1)
-    b1 = np.ones(50)
-    b2 = np.ones_like(b1)
-    
-    for i in range(50):
-        rowmask = np.zeros((50,50))
-        colmask = np.zeros_like(rowmask)
-        rowmask[i,:] = 1 
-        colmask[:,i] = 1
-        N1[i] = rowmask.flatten()
-        N2[i] = colmask.flatten() 
-    
-    # Similarity constraint
-    Sim = p - match_subs 
-    bsim = np.zeros(1)
-    
-    # Diversity constraint 
-    Div = q - 1 + match_subs 
-    bdiv = np.zeros_like(bsim)
+    def get_qpt_matrices(self, match_subs):
+        p,q = self.p, self.q
 
-    G = np.vstack((N1, N2, Sim, Div))
-    h = np.concatenate((b1, b2, bsim, bdiv))
-    A = None 
-    b = None 
-    return A,b, G,h
+        # we only have G * x <= h
+        
+        # Matching
+        N1 = np.zeros((50,2500))
+        N2 = np.zeros_like(N1)
+        b1 = np.ones(50)
+        b2 = np.ones_like(b1)
+        
+        for i in range(50):
+            rowmask = np.zeros((50,50))
+            colmask = np.zeros_like(rowmask)
+            rowmask[i,:] = 1 
+            colmask[:,i] = 1
+            N1[i] = rowmask.flatten()
+            N2[i] = colmask.flatten() 
+        
+        # Similarity constraint
+        Sim = p - match_subs 
+        bsim = np.zeros(1)
+        
+        # Diversity constraint 
+        Div = q - 1 + match_subs 
+        bdiv = np.zeros_like(bsim)
+
+        G = np.vstack((N1, N2, Sim, Div))
+        h = np.concatenate((b1, b2, bsim, bdiv))
+        A = torch.Tensor().float()
+        b = torch.Tensor().float()
+        return A,b, torch.from_numpy(G).float(), torch.from_numpy(h).float()
+
+
+
+
+# def get_qpt_matrices(match_subs, p=0.25, q=0.25, **kwargs):
+#     # we only have G * x <= h
+    
+#     # Matching
+#     N1 = np.zeros((50,2500))
+#     N2 = np.zeros_like(N1)
+#     b1 = np.ones(50)
+#     b2 = np.ones_like(b1)
+    
+#     for i in range(50):
+#         rowmask = np.zeros((50,50))
+#         colmask = np.zeros_like(rowmask)
+#         rowmask[i,:] = 1 
+#         colmask[:,i] = 1
+#         N1[i] = rowmask.flatten()
+#         N2[i] = colmask.flatten() 
+    
+#     # Similarity constraint
+#     Sim = p - match_subs 
+#     bsim = np.zeros(1)
+    
+#     # Diversity constraint 
+#     Div = q - 1 + match_subs 
+#     bdiv = np.zeros_like(bsim)
+
+#     G = np.vstack((N1, N2, Sim, Div))
+#     h = np.concatenate((b1, b2, bsim, bdiv))
+#     A = None 
+#     b = None 
+#     return A,b, G,h
 
 
 

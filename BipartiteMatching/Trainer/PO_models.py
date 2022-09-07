@@ -219,6 +219,53 @@ class IMLE(baseline_mse):
 
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+from qpth.qp import QPFunction
+class QPTL(baseline_mse):
+    def __init__(self, solver,lr=1e-1,mu=0.1,mode='sigmoid',n_layers=2, seed=0):
+        super().__init__(solver,lr,mode,n_layers,seed)
+        self.mu = mu
+    def training_step(self, batch, batch_idx):
+        mu = self.mu
+        x,y,sol,m = batch
+        y_hat =  self(x).squeeze()
+
+        loss = 0
+        for i in range(len(y_hat)):
+            A,b, G,h  = self.solver.get_qpt_matrices(m[i])
+            Q =  mu*torch.eye(G.shape[1]).float()
+            op = QPFunction()(Q,-y_hat[i],G,h,A,b).squeeze()
+    
+            loss +=  y[i].dot(sol[i] - op)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
+
+import cvxpy as cp  
+from cvxpylayers.torch import CvxpyLayer
+class DCOL(baseline_mse):
+    def __init__(self, solver,lr=1e-1,mu=0.1,mode='sigmoid',n_layers=2, seed=0):
+        super().__init__(solver,lr,mode,n_layers,seed)
+        self.mu = mu
+    def training_step(self, batch, batch_idx):
+        mu = self.mu
+        x,y,sol,m = batch
+        y_hat =  self(x).squeeze()
+
+        loss = 0
+        for i in range(len(y_hat)):
+            A,b, G,h  = self.solver.get_qpt_matrices(m[i])
+            
+            
+            z = cp.Variable(G.shape[1])
+            c = cp.Parameter(G.shape[1])
+            constraints = [G @ z <=h]  
+            objective = cp.Maximize(c @ z - mu*cp.pnorm(z, p=2))  #cp.pnorm(A @ x - b, p=1)
+            problem = cp.Problem(objective, constraints)
+            op,  = CvxpyLayer(problem, parameters=[c], variables=[z])(y_hat[i])
+            loss +=  y[i].dot(sol[i] - op)
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss            
+
+
 
 from Trainer.RankingLosses import PointwiseLoss, ListwiseLoss, PairwisediffLoss, PairwiseLoss
 class CachingPO(baseline_mse):
