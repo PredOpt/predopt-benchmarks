@@ -167,7 +167,7 @@ class twostage_baseline(pl.LightningModule):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
         if self.validation_metric=="regret":
             monitor = "val_regret"
-        if self.validation_metric=="hamming":
+        elif self.validation_metric=="hamming":
             monitor = "val_hammingloss"
         else:
             print("-> Validation metric")
