@@ -41,11 +41,11 @@ max_epochs = args.max_epochs
 seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/BaselineMSE{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
-regretfile = "Rslt/BaselineMSERegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+outputfile = "Rslt/BaselineMSEHamming{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
+regretfile = "Rslt/BaselineMSEHammingRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
 ckpt_dir =  "ckpt_dir/BaselineMSE{}seed{}_index{}/".format(args.img_size,seed, args.index)
 log_dir = "lightning_logs/BaselineMSE{}seed{}_index{}/".format(args.img_size,seed, args.index)
-learning_curve_datafile = "LearningCurve/BaselineMSE{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr,batch_size,seed, args.index)
+learning_curve_datafile = "LearningCurve/BaselineMSEHamming{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.img_size, lr,batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -61,7 +61,7 @@ metadata = data.metadata
 
 shutil.rmtree(ckpt_dir,ignore_errors=True)
 checkpoint_callback = ModelCheckpoint(
-        monitor="val_regret",
+        monitor= "val_hammingloss",
         dirpath=ckpt_dir, 
         filename="model-{epoch:02d}-{val_loss:.2f}",
         mode="min")
@@ -109,14 +109,14 @@ for logs in version_dirs:
     event_accumulator = EventAccumulator(logs)
     event_accumulator.Reload()
 
-    events = event_accumulator.Scalars("val_regret_epoch")
+    events = event_accumulator.Scalars("val_hammingloss_epoch")
     walltimes.extend( [x.wall_time for x in events])
     steps.extend([x.step for x in events])
     regrets.extend([x.value for x in events])
     events = event_accumulator.Scalars("val_mse_epoch")
     mses.extend([x.value for x in events])
 
-df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
+df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_hammingloss": regrets,
 "val_mse": mses })
 df['model'] ='BaselineMSE'
 df.to_csv(learning_curve_datafile,index=False)

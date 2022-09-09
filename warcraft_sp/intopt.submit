@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./intopt.sh
-Arguments      = $(modelname) $(imgsz) $(thr) $(damping) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(imgsz) $(thr) $(damping) $(seed) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
 error    = ./err/intopt_$(id).error
 log       = ./log/intopt_$(id).condor_log
 
-Queue modelname,imgsz,thr,damping,lr,tag,id from intopt.in
+Queue modelname,imgsz,thr,damping,seed,lr,tag,id from intopt.in

@@ -63,7 +63,7 @@ metadata = data.metadata
 
 shutil.rmtree(ckpt_dir,ignore_errors=True)
 checkpoint_callback = ModelCheckpoint(
-        monitor="val_regret",
+        monitor="val_hammingloss",
         dirpath=ckpt_dir, 
         filename="model-{epoch:02d}-{val_loss:.2f}",
         mode="min")
@@ -112,14 +112,14 @@ for logs in version_dirs:
     event_accumulator = EventAccumulator(logs)
     event_accumulator.Reload()
 
-    events = event_accumulator.Scalars("val_regret_epoch")
+    events = event_accumulator.Scalars("val_hammingloss_epoch")
     walltimes.extend( [x.wall_time for x in events])
     steps.extend([x.step for x in events])
     regrets.extend([x.value for x in events])
     events = event_accumulator.Scalars("val_mse_epoch")
     mses.extend([x.value for x in events])
 
-df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
+df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_hammingloss": regrets,
 "val_mse": mses })
 df['model'] ='BlackboxHamming'
 df.to_csv(learning_curve_datafile,index=False)
