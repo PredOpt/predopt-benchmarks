@@ -170,6 +170,7 @@ class twostage_baseline(pl.LightningModule):
         if self.validation_metric=="hamming":
             monitor = "val_hammingloss"
         else:
+            print("-> Validation metric")
             print(self.validation_metric)
             raise Exception("Don't know what quantity to monitor")
 
