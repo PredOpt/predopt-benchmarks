@@ -9,7 +9,7 @@ niter=${6}
 k=${7}
 seed=${8}
 lr=${9}
-tag= ${10}
+tag=${10}
 id=${11}
 
 source ~/.bashrc

@@ -5,7 +5,7 @@ imgsz=${2}
 growth=${3}
 seed=${4}
 lr=${5}
-tag= ${6}
+tag=${6}
 id=${7}
 echo ${tag}
 

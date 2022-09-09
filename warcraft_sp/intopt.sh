@@ -6,7 +6,7 @@ thr=${3}
 damping=${4}
 seed=${5}
 lr=${6}
-tag= ${7}
+tag=${7}
 id=${8}
 echo ${tag}
 

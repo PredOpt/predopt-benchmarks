@@ -6,7 +6,7 @@ sig=${3}
 nsamp=${4}
 seed=${5}
 lr=${6}
-tag= ${7}
+tag=${7}
 id=${8}
 
 source ~/.bashrc
