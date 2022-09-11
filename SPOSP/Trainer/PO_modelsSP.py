@@ -277,7 +277,7 @@ class IntOpt(DCOL):
 
 
 class IMLE(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,k=5,nb_iterations=100,nb_samples=1, 
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,k=5,nb_iterations=100,nb_samples=1, beta=10.,
             input_noise_temperature=1.0, target_noise_temperature=1.0,lr=1e-1,l1_weight=0.1,max_epochs=30,seed=20):
         super().__init__(net,exact_solver , lr, l1_weight, max_epochs, seed)
         self.solver = solver
@@ -286,41 +286,42 @@ class IMLE(twostage_regression):
         self.nb_samples = nb_samples
         self.target_noise_temperature = target_noise_temperature
         self.input_noise_temperature = input_noise_temperature
+        target_distribution = TargetDistribution(alpha=1.0, beta= beta)
+        noise_distribution = SumOfGammaNoiseDistribution(k= self.k, nb_iterations=self.nb_iterations)
 
+        imle_solver = lambda y_: solver.solution_fromtorch(-y_)
+
+        self.imle_layer = imle(imle_solver,target_distribution=target_distribution,
+        noise_distribution=noise_distribution, input_noise_temperature=input_noise_temperature, 
+        target_noise_temperature=self.target_noise_temperature,nb_samples=self.nb_samples)
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
-        loss = 0
-
-        # input_noise_temperature = 1.0
-        # target_noise_temperature = 1.0
-
-        target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
-        noise_distribution = SumOfGammaNoiseDistribution(k= self.k, nb_iterations=self.nb_iterations)
-
-        @imle(target_distribution=target_distribution,
-                noise_distribution=noise_distribution,
-                input_noise_temperature=self.input_noise_temperature,
-                target_noise_temperature=self.target_noise_temperature,
-                nb_samples=self.nb_samples)
-        def imle_solver(y):
-            #     I-MLE assumes that the solver solves a maximisation problem, but here the `solver` function solves
-            # a minimisation problem, so we flip the sign twice. Feed negative cost coefficient to imle_solver and then 
-            # flip it again to feed the actual cost to the solver
-            return spsolver.solution_fromtorch(-y)
-
-        ########### Also the forward pass returns the solution of the perturbed cost, which is bit strange
-        ###########
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
-        for ii in range(len(y)):
-            sol_hat = imle_solver(-y_hat[ii].unsqueeze(0)) # Feed neagtive cost coefficient
-            loss +=  (sol_hat*y[ii]).mean()
+        
+        sol_hat = self.imle_layer(-y_hat)
+        loss = ((sol_hat - sol)*y).sum(-1).mean()
+        training_loss= loss  + l1penalty * self.l1_weight
 
-        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+
+        # def imle_solver(y):
+        #     #     I-MLE assumes that the solver solves a maximisation problem, but here the `solver` function solves
+        #     # a minimisation problem, so we flip the sign twice. Feed negative cost coefficient to imle_solver and then 
+        #     # flip it again to feed the actual cost to the solver
+        #     return spsolver.solution_fromtorch(-y)
+
+        # ########### Also the forward pass returns the solution of the perturbed cost, which is bit strange
+        # ###########
+        # l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
+        # for ii in range(len(y)):
+        #     sol_hat = imle_solver(-y_hat[ii].unsqueeze(0)) # Feed neagtive cost coefficient
+        #     loss +=  (sol_hat*y[ii]).mean()
+
+        # training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
-        self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
+        self.log("train_loss",loss,  on_step=True, on_epoch=True, )
         return training_loss 
 ###################################### Differentiable Perturbed Optimizer #########################################
 
@@ -358,27 +359,29 @@ class FenchelYoung(twostage_regression):
         self.num_samples = num_samples
         self.sigma = sigma
         self.save_hyperparameters("lr")
+        self.fy_solver = lambda y: solver.solution_fromtorch(y)
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
-        solver= self.solver
+        # solver= self.solver
         
 
         
-        def fy_solver(y):
-            return spsolver.solution_fromtorch(y)
+        # def fy_solver(y):
+        #     return spsolver.solution_fromtorch(y)
         ############# Define the Loss functions, we can set maximization to be false
 
-        criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = False, batched=False)
+        criterion = fy.FenchelYoungLoss(self.fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = False, batched=True)
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
-        for ii in range(len(y)):
-            sol_true = fy_solver(y[ii])
-            loss +=  criterion(y_hat[ii],sol_true)
+        # for ii in range(len(y)):
+        #     sol_true = fy_solver(y[ii])
+        #     loss +=  criterion(y_hat[ii],sol_true)
+        loss = criterion(y_hat, sol)
 
-        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        training_loss=  loss + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
-        self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
+        self.log("train_loss",loss,  on_step=True, on_epoch=True, )
         return training_loss 
