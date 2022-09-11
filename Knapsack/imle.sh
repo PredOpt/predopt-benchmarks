@@ -15,5 +15,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python testknapsack${modelname}.py --capacity ${capacity} --beta "{beta}" --input_noise_temp "${inp}" --target_noise_temp "${targ}" --k ${k}  --nb_samples ${num_sample} --nb_iterations ${nb_iter} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/imle_${id}.log
+python testknapsack${modelname}.py --capacity ${capacity} --beta "${beta}" --input_noise_temp "${inp}" --target_noise_temp "${targ}" --k ${k}  --nb_samples ${num_sample} --nb_iterations ${nb_iter} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/imle_${id}.log
 exit 0
