@@ -282,14 +282,14 @@ class FenchelYoung(twostage_baseline):
 
 class IMLE(twostage_baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, seed=20,loss="hamming",k=5, nb_iterations=100,nb_samples=1, 
+        lr=1e-1, seed=20,loss="hamming",k=5, nb_iterations=100,nb_samples=1, beta=10.0,
             input_noise_temperature=1.0, target_noise_temperature=1.0):
         
         validation_metric = loss
         super().__init__(metadata, model_name, arch_params, neighbourhood_fn, lr,  seed,loss, validation_metric)
         solver =   get_solver(neighbourhood_fn)
 
-        target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
+        target_distribution = TargetDistribution(alpha=1.0, beta=beta)
         noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
 
         # @perturbations.perturbed(num_samples=num_samples, sigma=sigma, noise='gumbel',batched = False)

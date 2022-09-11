@@ -16,6 +16,7 @@ params_dict = {"1":{'p':0.25, 'q':0.25},"2":{'p':0.5, 'q':0.5} }
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
+parser.add_argument("--beta", type=float, help="parameter lambda", default= 10., required=False)
 parser.add_argument("--input_noise_temp", type=float, help="input_noise_temperature parameter", default= 1., required=False)
 parser.add_argument("--target_noise_temp", type=float, help="target_noise_temperature parameter", default= 1., required=False)
 parser.add_argument("--num_samples", type=int, help="number of samples", default= 1, required=False)
@@ -29,6 +30,7 @@ parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=
 parser.add_argument("--index", type=int, help="index", default= 50, required=False)
 args = parser.parse_args()
 ###################################### Hyperparams #########################################
+beta =  args.beta
 lr = args.lr
 nb_iterations ,nb_samples= args.num_iter, args.num_samples
 input_noise_temperature, target_noise_temperature = args.input_noise_temp, args.target_noise_temp
@@ -52,7 +54,7 @@ outputfile = "Rslt/IMLE_matching{}_index{}.csv".format(args.instance, args.index
 regretfile = "Rslt/IMLE_matchingRegret{}_index{}.csv".format(args.instance, args.index)
 ckpt_dir =  "ckpt_dir/IMLE{}_index{}/".format(args.instance, args.index)
 log_dir = "lightning_logs/IMLE{}_index{}/".format(args.instance, args.index)
-learning_curve_datafile = "LearningCurve/IMLE{}_inp{}_target{}_k{}_niter{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,input_noise_temperature, target_noise_temperature ,
+learning_curve_datafile = "LearningCurve/IMLE{}_temp{}_beta{}_k{}_niter{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,input_noise_temperature, beta ,
 lr,k, nb_iterations, batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -78,7 +80,7 @@ for seed in range(10):
 
 
 
-    model = IMLE(solver,k=k, nb_iterations=nb_iterations, nb_samples=1,
+    model = IMLE(solver,k=k, nb_iterations=nb_iterations, nb_samples= nb_samples,beta=beta,
      input_noise_temperature=input_noise_temperature, target_noise_temperature=target_noise_temperature,
       lr=lr,seed=seed)
     trainer.fit(model, datamodule=data)
@@ -89,7 +91,7 @@ for seed in range(10):
 
 
     model = IMLE.load_from_checkpoint(best_model_path ,solver=solver,
-    k=k, nb_iterations=nb_iterations, nb_samples=1,
+    k=k, nb_iterations=nb_iterations, nb_samples= nb_samples,beta=beta,
      input_noise_temperature=input_noise_temperature, target_noise_temperature=target_noise_temperature,
       lr=lr,seed=seed)    
 
@@ -105,6 +107,7 @@ for seed in range(10):
     df['target_noise_temperature'] = target_noise_temperature
     df['nb_iterations'] = nb_iterations
     df['nb_samples'] = nb_samples
+    df['beta'] = beta
     df['lr'] = lr
     df['seed']= seed
  
@@ -120,6 +123,7 @@ for seed in range(10):
     df['target_noise_temperature'] = target_noise_temperature
     df['nb_iterations'] = nb_iterations
     df['nb_samples'] = nb_samples
+    df['beta'] = beta
     df['lr'] = lr
     df['seed']= seed
 

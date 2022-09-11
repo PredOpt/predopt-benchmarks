@@ -16,6 +16,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("--img_size", type=int, help="size of image in one dimension", default= 12)
 parser.add_argument("--lr", type=float, help="learning rate", default= 5e-4, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
+parser.add_argument("--beta", type=float, help="parameter lambda", default= 10., required=False)
 parser.add_argument("--seed", type=int, help="seed", default= 9, required=False)
 parser.add_argument("--max_epochs", type=int, help="maximum bumber of epochs", default= 50, required=False)
 parser.add_argument("--input_noise_temp", type=float, help="input_noise_temperature parameter", default= 1., required=False)
@@ -40,6 +41,7 @@ def seed_all(seed):
 ############### Configuration
 img_size = "{}x{}".format(args.img_size, args.img_size)
 ###################################### Hyperparams #########################################
+beta =  args.beta
 nb_iterations ,nb_samples= args.num_iter, args.num_samples
 input_noise_temperature, target_noise_temperature = args.input_noise_temp, args.target_noise_temp
 k = args.k
@@ -53,7 +55,7 @@ outputfile = "Rslt/IMLEHamming{}seed{}_index{}.csv".format(args.img_size,seed, a
 regretfile = "Rslt/IMLEHammingRegret{}seed{}_index{}.csv".format(args.img_size,seed, args.index)
 ckpt_dir =  "ckpt_dir/IMLEHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
 log_dir = "lightning_logs/IMLEHamming{}seed{}_index{}/".format(args.img_size,seed, args.index)
-learning_curve_datafile = "LearningCurve/IMLEHamming{}_inptmp_{}trgttmp_{}_lr{}_batchsize{}_numsamples{}_numiter{}_seed{}_index{}.csv".format(args.img_size,input_noise_temperature, target_noise_temperature,lr,batch_size,nb_samples,nb_iterations, seed,args.index)
+learning_curve_datafile = "LearningCurve/IMLEHamming{}_tmp_{}beta_{}_lr{}_batchsize{}_numsamples{}_numiter{}_seed{}_index{}.csv".format(args.img_size,input_noise_temperature, beta,lr,batch_size,nb_samples,nb_iterations, seed,args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
 
@@ -76,12 +78,12 @@ checkpoint_callback = ModelCheckpoint(
 
 tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
 trainer = pl.Trainer(max_epochs= max_epochs,  min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
-model =  IMLE(metadata=metadata, nb_iterations= nb_iterations,nb_samples= nb_samples, k=k,
+model =  IMLE(metadata=metadata, nb_iterations= nb_iterations,nb_samples= nb_samples, k=k,beta=beta,
             input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, lr=lr, seed=seed, loss="hamming")
 trainer.fit(model, datamodule=data)
 best_model_path = checkpoint_callback.best_model_path
 model = IMLE.load_from_checkpoint(best_model_path,
-    metadata=metadata, nb_iterations= nb_iterations,nb_samples= nb_samples, 
+    metadata=metadata, nb_iterations= nb_iterations,nb_samples= nb_samples, beta=beta,
             input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, lr=lr, seed=seed, loss= "hamming")
 
 
@@ -98,6 +100,7 @@ df['input_noise_temperature'] = input_noise_temperature
 df['target_noise_temperature'] = target_noise_temperature
 df['nb_iterations'] = nb_iterations
 df['nb_samples'] = nb_samples
+df['beta'] = beta
 with open(regretfile, 'a') as f:
     df.to_csv(f, header=f.tell()==0)
 
@@ -114,7 +117,7 @@ df['input_noise_temperature'] = input_noise_temperature
 df['target_noise_temperature'] = target_noise_temperature
 df['nb_iterations'] = nb_iterations
 df['nb_samples'] = nb_samples
-
+df['beta'] = beta
 with open(outputfile, 'a') as f:
     df.to_csv(f, header=f.tell()==0)
 

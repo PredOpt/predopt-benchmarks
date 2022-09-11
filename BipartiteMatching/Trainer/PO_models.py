@@ -183,13 +183,13 @@ class FenchelYoung(baseline_mse):
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 class IMLE(baseline_mse):
-    def __init__(self,solver,k=5, nb_iterations=100,nb_samples=1, 
+    def __init__(self,solver,k=5, nb_iterations=100,nb_samples=1, beta=10.0,
             input_noise_temperature=1.0, target_noise_temperature=1.0, 
             lr=1e-1,mode='sigmoid',n_layers=2, seed=0):
 
         super().__init__(solver,lr,mode,n_layers,seed) 
 
-        self.target_distribution = TargetDistribution(alpha=1.0, beta=10.0)
+        self.target_distribution = TargetDistribution(alpha=1.0, beta=beta)
         self.noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
         self.input_noise_temperature= input_noise_temperature
         self.target_noise_temperature= target_noise_temperature
