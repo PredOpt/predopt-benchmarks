@@ -36,7 +36,7 @@ for N in [100,1000]:
                 batchsize  = 128
                 max_epochs = 40
                 nb_iterations,nb_samples= 1, 1
-                input_noise_temperature , target_noise_temperature, k, beta = 1,1,5, 5
+                input_noise_temperature , target_noise_temperature, k = 1,1,5
                 ######################################  Data Reading #########################################
 
                 Train_dfx= pd.read_csv("SyntheticData/TraindataX_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None)
