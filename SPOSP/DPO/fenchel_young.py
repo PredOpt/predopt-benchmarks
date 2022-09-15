@@ -23,7 +23,7 @@
 import torch
 import torch.nn as nn
 
-import perturbations
+from DPO import perturbations
 
 
 class PerturbedFunc(torch.autograd.Function):
@@ -48,7 +48,8 @@ class PerturbedFunc(torch.autograd.Function):
         batched = ctx.batched
         if batched:  # dy has shape (batch_size,) in this case.
             dy = torch.reshape(dy, [list(dy.shape)[0]] + (diff.dim() - 1) * [1])
-        return dy * diff, None, None, None, None
+        return dy * diff, None, None, None, None # original
+        # return  diff, None, None, None, None
 
 
 class FenchelYoungLoss(nn.Module):
@@ -56,7 +57,7 @@ class FenchelYoungLoss(nn.Module):
                  func = None,
                  num_samples = 1000,
                  sigma = 0.01,
-                 noise = perturbations._NORMAL,
+                 noise = perturbations._GUMBEL,
                  batched = True,
                  maximize = True,
                  device=None):

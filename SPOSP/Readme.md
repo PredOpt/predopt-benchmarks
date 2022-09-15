@@ -1,4 +1,7 @@
 Here, we generate the shortest path instances as described in `Smart “predict, then optimize” (2021)` paper.
+To download the data file run
+`gdown https://drive.google.com/uc?id=18SgSGHq0F0h9hG6_6cgO9Cqxvn1k_i8r`
+or alternatively you can execute `./data_download.sh`
 
 To create the instances, first create a folder named `synthetic_path` and then run `python simulate_shortest_path.py`.
 
