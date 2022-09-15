@@ -42,8 +42,8 @@ class twostage_mse(pl.LightningModule):
         val_loss= regret_fn(self.solver, y_hat,y,sol)
         mseloss = criterion(y_hat, y)
 
-        self.log("val_regret", val_loss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("val_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("val_regret", val_loss, prog_bar=True, on_step=False, on_epoch=True, )
+        self.log("val_mse", mseloss, prog_bar=True, on_step=False, on_epoch=True, )
        
         return  {"val_regret": val_loss, "val_mse": mseloss, }
     def predict_step(self, batch, batch_idx):
@@ -63,8 +63,8 @@ class twostage_mse(pl.LightningModule):
         val_loss= regret_fn(self.solver, y_hat,y,sol)
         mseloss = criterion(y_hat, y)
 
-        self.log("test_regret", val_loss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("test_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("test_regret", val_loss, prog_bar=True, on_step=False, on_epoch=True, )
+        self.log("test_mse", mseloss, prog_bar=True, on_step=False, on_epoch=True, )
        
         return  {"test_regret": val_loss, "test_mse": mseloss, }
     def configure_optimizers(self):

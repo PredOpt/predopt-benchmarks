@@ -98,10 +98,10 @@ class twostage_baseline(pl.LightningModule):
 
         Hammingloss = normalized_hamming(true_weights, label, shortest_path )
 
-        self.log("val_bce", bceloss, prog_bar=True, on_step=True, on_epoch=True,sync_dist=True )
-        self.log("val_mse", mse, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True )
-        self.log("val_regret", regret, prog_bar=True, on_step=True, on_epoch=True,sync_dist=True )
-        self.log("val_hammingloss",  Hammingloss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
+        self.log("val_bce", bceloss, prog_bar=True, on_step=False, on_epoch=True,sync_dist=True )
+        self.log("val_mse", mse, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True )
+        self.log("val_regret", regret, prog_bar=True, on_step=False, on_epoch=True,sync_dist=True )
+        self.log("val_hammingloss",  Hammingloss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
 
         return {"val_mse":mse, "val_bce":bceloss,
              "val_regret":regret,"val_hammingloss":Hammingloss}
@@ -135,10 +135,10 @@ class twostage_baseline(pl.LightningModule):
 
         Hammingloss = normalized_hamming(true_weights, label, shortest_path ) 
 
-        self.log("test_bce", bceloss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
-        self.log("test_mse", mse, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True )
-        self.log("test_regret", regret, prog_bar=True, on_step=True, on_epoch=True,sync_dist=True )
-        self.log("test_hammingloss",  Hammingloss, prog_bar=True, on_step=True, on_epoch=True, sync_dist=True)
+        self.log("test_bce", bceloss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
+        self.log("test_mse", mse, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True )
+        self.log("test_regret", regret, prog_bar=True, on_step=False, on_epoch=True,sync_dist=True )
+        self.log("test_hammingloss",  Hammingloss, prog_bar=True, on_step=False, on_epoch=True, sync_dist=True)
 
         return {"test_mse":mse, "test_bce":bceloss,
              "test_regret":regret,"test_hammingloss":Hammingloss}

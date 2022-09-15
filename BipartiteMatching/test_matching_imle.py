@@ -54,7 +54,7 @@ outputfile = "Rslt/IMLE_matching{}_index{}.csv".format(args.instance, args.index
 regretfile = "Rslt/IMLE_matchingRegret{}_index{}.csv".format(args.instance, args.index)
 ckpt_dir =  "ckpt_dir/IMLE{}_index{}/".format(args.instance, args.index)
 log_dir = "lightning_logs/IMLE{}_index{}/".format(args.instance, args.index)
-learning_curve_datafile = "LearningCurve/IMLE{}_temp{}_beta{}_k{}_niter{}_lr{}_batchsize{}_seed{}_index{}.csv".format(args.instance,input_noise_temperature, beta ,
+learning_curve_datafile = "LearningCurve/IMLE{}_temp{}_beta{}_lr{}_k{}_niter{}_batchsize{}_seed{}_index{}.csv".format(args.instance,input_noise_temperature, beta ,
 lr,k, nb_iterations, batch_size,seed, args.index)
 shutil.rmtree(log_dir,ignore_errors=True)
 
@@ -65,7 +65,7 @@ for seed in range(10):
     checkpoint_callback = ModelCheckpoint(
                     monitor="val_regret",
                     dirpath=ckpt_dir, 
-                    filename="model-{epoch:02d}-{val_loss:.2f}",
+                    filename="model-{epoch:02d}-{val_loss:.8f}",
                     mode="min",
                 )
     seed_all(seed)
@@ -76,7 +76,7 @@ for seed in range(10):
     data =  CoraMatchingDataModule(solver,params= params, batch_size=batch_size, generator=g, num_workers=8)
     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
 
-    trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback] )
+    trainer = pl.Trainer(max_epochs= max_epochs, min_epochs=3, logger=tb_logger, callbacks=[checkpoint_callback])
 
 
 

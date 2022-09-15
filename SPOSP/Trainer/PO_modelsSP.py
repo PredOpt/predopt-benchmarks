@@ -61,9 +61,9 @@ class twostage_regression(pl.LightningModule):
         regret_loss =  regret_fn(self.exact_solver, y_hat,y, sol) 
         # pointwise_loss = pointwise_crossproduct_loss(y_hat,y)
 
-        self.log("val_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("val_regret", regret_loss, prog_bar=True, on_step=True, on_epoch=True, )
-        # self.log("val_pointwise", pointwise_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("val_mse", mseloss, prog_bar=True, on_step=False, on_epoch=True, )
+        self.log("val_regret", regret_loss, prog_bar=True, on_step=False, on_epoch=True, )
+        # self.log("val_pointwise", pointwise_loss, prog_bar=True, on_step=False, on_epoch=True, )
 
         return {"val_mse":mseloss, "val_regret":regret_loss}
     def validation_epoch_end(self, outputs):
@@ -82,8 +82,8 @@ class twostage_regression(pl.LightningModule):
         regret_loss =  regret_fn(self.exact_solver, y_hat,y, sol) 
         # pointwise_loss = pointwise_crossproduct_loss(y_hat,y)
 
-        self.log("test_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("test_regret", regret_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("test_mse", mseloss, prog_bar=True, on_step=False, on_epoch=True, )
+        self.log("test_regret", regret_loss, prog_bar=True, on_step=False, on_epoch=True, )
         # self.log("test_pointwise", pointwise_loss, prog_bar=True, on_step=True, on_epoch=True, )
 
         return {"test_mse":mseloss, "test_regret":regret_loss}

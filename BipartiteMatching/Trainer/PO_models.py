@@ -61,9 +61,9 @@ class baseline_mse(pl.LightningModule):
         bceloss = criterion2(y_hat, sol)
 
 
-        self.log("val_regret", val_loss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("val_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("val_bce", bceloss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("val_regret", val_loss, prog_bar=True, on_step=False, on_epoch=True, )
+        self.log("val_mse", mseloss, prog_bar=True, on_step=False, on_epoch=True, )
+        self.log("val_bce", bceloss, prog_bar=True, on_step=False, on_epoch=True, )
        
         return  {"val_regret": val_loss, "val_mse": mseloss}
 
@@ -80,9 +80,9 @@ class baseline_mse(pl.LightningModule):
            y_hat = torch.sigmoid(y_hat)
 
         bceloss = criterion2(y_hat, sol)
-        self.log("test_regret", val_loss, prog_bar=True, on_step=True, on_epoch=True, )
-        self.log("test_mse", mseloss, prog_bar=True, on_step=True, on_epoch=True, )    
-        self.log("test_bce", bceloss, prog_bar=True, on_step=True, on_epoch=True, )        
+        self.log("test_regret", val_loss, prog_bar=True, on_step=False, on_epoch=True, )
+        self.log("test_mse", mseloss, prog_bar=True, on_step=False, on_epoch=True, )    
+        self.log("test_bce", bceloss, prog_bar=True, on_step=False, on_epoch=True, )        
         return  {"test_regret": val_loss, "test_mse": mseloss}
     def predict_step(self, batch, batch_idx):
         '''
