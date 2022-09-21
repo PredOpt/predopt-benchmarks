@@ -20,7 +20,7 @@ import pytorch_lightning as pl
 
 
 class baseline_mse(pl.LightningModule):
-    def __init__(self,solver,lr=1e-1,mode='sigmoid',n_layers=2,seed=0):
+    def __init__(self,solver,lr=1e-1,mode='sigmoid',n_layers=2,seed=0, **kwd):
         super().__init__()
         pl.seed_everything(seed)
         if mode=='sigmoid':
@@ -118,7 +118,7 @@ class baseline_mse(pl.LightningModule):
             }}
 
 class baseline_bce(baseline_mse):
-    def __init__(self,solver,lr=1e-1,mode='sigmoid',n_layers=2,seed=0):
+    def __init__(self,solver,lr=1e-1,mode='sigmoid',n_layers=2,seed=0, **kwd):
             super().__init__(solver,lr,mode,n_layers,seed) 
     def training_step(self, batch, batch_idx):
         x,y,sol,m = batch
@@ -130,7 +130,7 @@ class baseline_bce(baseline_mse):
 
 
 class SPO(baseline_mse):
-    def __init__(self,solver, lr=1e-1,mode='sigmoid',n_layers=2,seed=0):
+    def __init__(self,solver, lr=1e-1,mode='sigmoid',n_layers=2,seed=0, **kwd):
         super().__init__(solver,lr,mode,n_layers,seed)
         self.layer = SPOlayer(solver)
         # self.automatic_optimization = False
@@ -142,7 +142,7 @@ class SPO(baseline_mse):
         return loss
 
 class DBB(baseline_mse):
-    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='sigmoid',n_layers=2, seed=0):
+    def __init__(self, solver,lr=1e-1,lambda_val=0.1,mode='sigmoid',n_layers=2, seed=0, **kwd):
         super().__init__(solver,lr,mode,n_layers,seed)
         self.layer = DBBlayer(solver,lambda_val=lambda_val)
     def training_step(self, batch, batch_idx):
@@ -154,7 +154,7 @@ class DBB(baseline_mse):
 
 class FenchelYoung(baseline_mse):
     def __init__(self,solver,sigma=0.1,num_samples=10, 
-        lr=1e-1,mode='sigmoid',n_layers=2, seed=0):
+        lr=1e-1,mode='sigmoid',n_layers=2, seed=0, **kwd):
         self.sigma = sigma
         self.num_samples = num_samples
         super().__init__(solver,lr,mode,n_layers,seed)
@@ -184,15 +184,17 @@ class FenchelYoung(baseline_mse):
         return loss
 class IMLE(baseline_mse):
     def __init__(self,solver,k=5, nb_iterations=100,nb_samples=1, beta=10.0,
-            input_noise_temperature=1.0, target_noise_temperature=1.0, 
-            lr=1e-1,mode='sigmoid',n_layers=2, seed=0):
+            # input_noise_temperature=1.0, target_noise_temperature=1.0, 
+            temperature=1.0,
+            lr=1e-1,mode='sigmoid',n_layers=2, seed=0, **kwd):
 
         super().__init__(solver,lr,mode,n_layers,seed) 
 
         self.target_distribution = TargetDistribution(alpha=1.0, beta=beta)
         self.noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
-        self.input_noise_temperature= input_noise_temperature
-        self.target_noise_temperature= target_noise_temperature
+
+        self.input_noise_temperature= temperature
+        self.target_noise_temperature= temperature
         self.nb_samples= nb_samples
     def training_step(self, batch, batch_idx):
 
@@ -221,7 +223,7 @@ class IMLE(baseline_mse):
         return loss
 from qpth.qp import QPFunction
 class QPTL(baseline_mse):
-    def __init__(self, solver,lr=1e-1,mu=0.1,mode='sigmoid',n_layers=2, seed=0):
+    def __init__(self, solver,lr=1e-1,mu=0.1,mode='sigmoid',n_layers=2, seed=0, **kwd):
         super().__init__(solver,lr,mode,n_layers,seed)
         self.mu = mu
     def training_step(self, batch, batch_idx):
@@ -242,7 +244,7 @@ class QPTL(baseline_mse):
 import cvxpy as cp  
 from cvxpylayers.torch import CvxpyLayer
 class DCOL(baseline_mse):
-    def __init__(self, solver,lr=1e-1,mu=0.1,mode='sigmoid',n_layers=2, seed=0):
+    def __init__(self, solver,lr=1e-1,mu=0.1,mode='sigmoid',n_layers=2, seed=0, **kwd):
         super().__init__(solver,lr,mode,n_layers,seed)
         self.mu = mu
     def training_step(self, batch, batch_idx):
@@ -270,7 +272,7 @@ class DCOL(baseline_mse):
 from Trainer.RankingLosses import PointwiseLoss, ListwiseLoss, PairwisediffLoss, PairwiseLoss
 class CachingPO(baseline_mse):
     def __init__(self,solver,init_cache,tau=1.,growth=0.1,loss="listwise",
-        lr=1e-1,mode='sigmoid',n_layers=2, seed=0):
+        lr=1e-1,mode='sigmoid',n_layers=2, seed=0, **kwd):
         '''tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
         '''
         super().__init__(solver,lr,mode,n_layers,seed) 

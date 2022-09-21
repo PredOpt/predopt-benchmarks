@@ -56,7 +56,7 @@ for seed in range(10):
     checkpoint_callback = ModelCheckpoint(
                     monitor="val_regret",
                     dirpath=ckpt_dir, 
-                    filename="model-{epoch:02d}-{val_loss:.2f}",
+                    filename="model-{epoch:02d}-{val_regret:.6f}",
                     mode="min",
                 )
     seed_all(seed)
