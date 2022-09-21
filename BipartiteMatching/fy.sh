@@ -11,5 +11,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python test_matching_${modelname}.py --instance ${instance} --sigma "${sigma}" --num_samples ${nsamp} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/FY_${id}.log
+python test_matching.py --model ${modelname} --instance ${instance} --sigma "${sigma}" --num_samples ${nsamp} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/FY_${id}.log
 exit 0
