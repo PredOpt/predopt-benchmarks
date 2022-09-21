@@ -14,5 +14,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python test_matching.py --model ${modelname} --instance ${instance} --num_samples ${nsamp} --beta "${beta}" --itemperature "${temp}" --target_noise_temp "${targettemp}" --k ${k}  --num_iter ${niter} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/IMLE_${id}.log
+python test_matching.py --model ${modelname} --instance ${instance} --num_samples ${nsamp} --beta "${beta}" --itemperature "${temp}" --k ${k}  --num_iter ${niter} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/IMLE_${id}.log
 exit 0
