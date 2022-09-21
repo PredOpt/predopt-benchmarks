@@ -59,6 +59,7 @@ sentinel_ns = Namespace(**{key:sentinel for key in argument_dict})
 parser.parse_args(namespace=sentinel_ns)
 
 explicit = {key:value for key, value in vars(sentinel_ns).items() if value is not sentinel }
+######## Solver for this instance
 params = params_dict[ argument_dict['instance']]
 solver = bmatching_diverse(**params)
 
@@ -81,7 +82,7 @@ def seed_all(seed):
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-# ###################################### Hyperparams #########################################
+
 # ################## Define the outputfile
 outputfile = "Rslt/{}matching{}_index{}.csv".format(modelname,  args.instance, args.index)
 regretfile = "Rslt/{}matchingRegret{}_index{}.csv".format(modelname,args.instance, args.index)
@@ -91,12 +92,8 @@ log_dir = "lightning_logs/{}{}_index{}/".format(modelname,args.instance, args.in
 learning_curve_datafile = "LearningCurve/{}_".format(modelname)+"_".join( ["{}_{}".format(k,v) for k,v  in explicit.items()] )+".csv"  
 
 shutil.rmtree(log_dir,ignore_errors=True)
-print(outputfile, regretfile, ckpt_dir, log_dir, learning_curve_datafile )
 
-
-solver = bmatching_diverse(**params)
-
-for seed in range(2):
+for seed in range(10):
     shutil.rmtree(ckpt_dir,ignore_errors=True)
     checkpoint_callback = ModelCheckpoint(
                     monitor="val_regret",
