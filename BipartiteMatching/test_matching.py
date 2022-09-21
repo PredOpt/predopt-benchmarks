@@ -21,7 +21,7 @@ parser.add_argument("--lambda_val", type=float, help="interpolaton parameter bla
 parser.add_argument("--sigma", type=float, help="DPO FY noise parameter", default= 1., required=False)
 parser.add_argument("--num_samples", type=int, help="number of samples FY", default= 1, required=False)
 
-parser.add_argument("--temperature", type=float, help="inpu znd target noise temperature parameter", default= 1., required=False)
+parser.add_argument("--temperature", type=float, help="input and target noise temperature parameter", default= 1., required=False)
 parser.add_argument("--nb_iterations", type=int, help="number of iterations", default= 10, required=False)
 parser.add_argument("--k", type=int, help="parameter k", default= 10, required=False)
 parser.add_argument("--nb_samples", type=int, help="Number of samples paprameter", default= 10, required=False)
