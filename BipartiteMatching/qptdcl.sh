@@ -10,5 +10,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python test_matching_${modelname}.py --instance ${instance} --mu "${mu}"  --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/qptdcl_${id}.log
+python test_matching.py --model ${modelname} --instance ${instance} --mu "${mu}"  --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/qptdcl_${id}.log
 exit 0
