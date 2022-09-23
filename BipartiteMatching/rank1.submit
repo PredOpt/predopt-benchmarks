@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./rank1.sh
-Arguments      = $(modelname) $(instance) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(loss) $(instance) $(lr) $(tag) $(id)
 
 input   = /dev/null
 output  = ./out/matchingrank1run_$(id).out
 error    = ./err/matchingrank1run_$(id).error
 log       = ./log/matchingrank1run_$(id).log
 
-Queue modelname,instance,lr,tag,id from rank1.in
+Queue modelname,loss,instance,lr,tag,id from rank1.in

@@ -9,7 +9,7 @@ import shutil
 import random
 from Trainer.PO_models import *
 from pytorch_lightning.callbacks import ModelCheckpoint
-from Trainer.data_utils import CoraMatchingDataModule
+from Trainer.data_utils import CoraMatchingDataModule, return_trainlabel
 from Trainer.bipartite import bmatching_diverse
 
 params_dict = {"1":{'p':0.25, 'q':0.25},"2":{'p':0.5, 'q':0.5} }
@@ -33,6 +33,8 @@ parser.add_argument("--thr", type=float, help="threshold parameter", default= 1e
 parser.add_argument("--damping", type=float, help="damping parameter", default= 1e-8)
 parser.add_argument("--tau", type=float, help="parameter of rankwise losses", default= 1e-8)
 parser.add_argument("--growth", type=float, help="growth parameter of rankwise losses", default= 1e-8)
+
+parser.add_argument("--loss", type= str, help="loss", default= "", required=False)
 
 
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
@@ -62,7 +64,8 @@ explicit = {key:value for key, value in vars(sentinel_ns).items() if value is no
 ######## Solver for this instance
 params = params_dict[ argument_dict['instance']]
 solver = bmatching_diverse(**params)
-
+if modelname=="CachingPO":
+    cache = return_trainlabel( solver,params )
 # ###################################### Hyperparams #########################################
 # beta =  args.beta
 # lr = args.lr
@@ -84,10 +87,10 @@ def seed_all(seed):
     random.seed(seed)
 
 # ################## Define the outputfile
-outputfile = "Rslt/{}matching{}_index{}.csv".format(modelname,  args.instance, args.index)
-regretfile = "Rslt/{}matchingRegret{}_index{}.csv".format(modelname,args.instance, args.index)
-ckpt_dir =  "ckpt_dir/{}{}_index{}/".format(modelname,args.instance, args.index)
-log_dir = "lightning_logs/{}{}_index{}/".format(modelname,args.instance, args.index)
+outputfile = "Rslt/{}matching{}{}_index{}.csv".format(modelname, args.loss,  args.instance, args.index)
+regretfile = "Rslt/{}matchingRegret{}{}_index{}.csv".format(modelname,   args.loss,args.instance, args.index)
+ckpt_dir =  "ckpt_dir/{}{}{}_index{}/".format(modelname,  args.loss,args.instance, args.index)
+log_dir = "lightning_logs/{}{}{}_index{}/".format(modelname,  args.loss,args.instance, args.index)
 
 learning_curve_datafile = "LearningCurve/{}_".format(modelname)+"_".join( ["{}_{}".format(k,v) for k,v  in explicit.items()] )+".csv"  
 
@@ -109,8 +112,10 @@ for seed in range(10):
     data =  CoraMatchingDataModule(solver,params= params, 
     batch_size= argument_dict['batch_size'], generator=g, num_workers=8)
     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
-
-    model = modelcls(solver=solver,seed=seed, **argument_dict)
+    if modelname=="CachingPO":
+        model = modelcls(init_cache=cache, solver=solver,seed=seed, **argument_dict)
+    else:
+        model = modelcls(solver=solver,seed=seed, **argument_dict)
 
     trainer = pl.Trainer(max_epochs=  argument_dict['max_epochs'], min_epochs=3, 
     logger=tb_logger, callbacks=[checkpoint_callback])
@@ -118,10 +123,11 @@ for seed in range(10):
 
     best_model_path = checkpoint_callback.best_model_path
     print("Model Path:",best_model_path)
-
-
-
-    model = modelcls.load_from_checkpoint(best_model_path ,solver=solver,seed=seed,
+    if modelname=="CachingPO":
+        model = modelcls.load_from_checkpoint(best_model_path ,  init_cache=cache, solver=solver,seed=seed,
+    **argument_dict)
+    else:
+        model = modelcls.load_from_checkpoint(best_model_path ,solver=solver,seed=seed,
     **argument_dict)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
