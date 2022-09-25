@@ -154,7 +154,7 @@ class FenchelYoung(baseline_mse):
 
 class IMLE(baseline_mse):
     def __init__(self,weights,capacity,n_items, k=5, nb_iterations=100,nb_samples=1, beta=10.0,
-            input_noise_temperature=1.0, target_noise_temperature=1.0,  lr=1e-1,seed=0, **kwd):
+            temperature=1.0,   lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         imle_solver = lambda y_: batch_solve(self.solver,y_)
 
@@ -162,7 +162,7 @@ class IMLE(baseline_mse):
         noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
 
         self.layer = imle(imle_solver,  target_distribution=target_distribution,noise_distribution=noise_distribution,
-                    input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature,
+                    input_noise_temperature= temperature, target_noise_temperature= temperature,
                     nb_samples= nb_samples)
     def training_step(self, batch, batch_idx):
         x,y,sol = batch

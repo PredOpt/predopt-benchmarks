@@ -10,5 +10,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python testknapsack${modelname}.py --capacity ${capacity} --lambda_val "${lambd}" --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/blackbox_${id}.log
+python testknapsack.py --model ${modelname} --capacity ${capacity} --lambda_val "${lambd}" --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/blackbox_${id}.log
 exit 0

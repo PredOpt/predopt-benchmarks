@@ -11,5 +11,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python testknapsack${modelname}.py --capacity ${capacity} --sigma "${sigma}" --num_samples ${nsamp} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/fy_${id}.log
+python testknapsack.py --model ${modelname} --capacity ${capacity} --sigma "${sigma}" --num_samples ${nsamp} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/fy_${id}.log
 exit 0

@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./imle.sh
-Arguments      = $(modelname) $(capacity) $(inp) $(targ) $(beta) $(k) $(num_sample) $(nb_iter) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(capacity) $(temp) $(beta) $(k) $(num_sample) $(nb_iter) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
 error    = ./err/Knapsackimlerun_$(id).error
 log       = ./log/Knapsackimlerun_$(id).condor_log
 
-Queue modelname,capacity,inp,targ,beta,k,num_sample,nb_iter,lr,tag,id from imle.in
+Queue modelname,capacity,temp,beta,k,num_sample,nb_iter,lr,tag,id from imle.in
