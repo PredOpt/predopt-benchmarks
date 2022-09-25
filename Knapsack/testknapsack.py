@@ -108,7 +108,7 @@ for seed in range(10):
         model =  modelcls.load_from_checkpoint(best_model_path,
         weights = weights,capacity= capacity,n_items = n_items,init_cache=cache,seed=seed, **argument_dict)
     else:
-        model =  modelcls(best_model_path,
+        model =  modelcls.load_from_checkpoint(best_model_path,
         weights = weights,capacity= capacity,n_items = n_items,seed=seed, **argument_dict)
    ##### SummaryWrite ######################
     validresult = trainer.validate(model,datamodule=data)
