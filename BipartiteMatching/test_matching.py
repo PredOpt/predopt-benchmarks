@@ -16,7 +16,7 @@ params_dict = {"1":{'p':0.25, 'q':0.25},"2":{'p':0.5, 'q':0.5} }
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--model", type=str, help="name of the model", default= 1e-3, required= True)
+parser.add_argument("--model", type=str, help="name of the model", default= "", required= True)
 parser.add_argument("--lambda_val", type=float, help="interpolaton parameter blackbox", default= 1., required=False)
 parser.add_argument("--sigma", type=float, help="DPO FY noise parameter", default= 1., required=False)
 parser.add_argument("--num_samples", type=int, help="number of samples FY", default= 1, required=False)

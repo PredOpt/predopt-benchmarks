@@ -14,6 +14,7 @@ from pytorch_lightning import loggers as pl_loggers
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--capacity", type=int, help="capacity of knapsack", default= 12)
+parser.add_argument("--model", type=str, help="name of the model", default= "", required= True)
 
 parser.add_argument("--lambda_val", type=float, help="interpolaton parameter blackbox", default= 1., required=False)
 parser.add_argument("--sigma", type=float, help="DPO FY noise parameter", default= 1., required=False)
