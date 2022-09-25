@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 
 modelname=${1}
-capacity=${2}
-lr=${3}
-tag=${4}
-id=${5}
+loss=${2}
+capacity=${3}
+lr=${4}
+tag=${5}
+id=${6}
 echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python testknapsack${modelname}.py --capacity ${capacity} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/ranking_${id}.log
+python testknapsack.py --model ${modelname} --loss ${loss} --capacity ${capacity} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/ranking_${id}.log
 exit 0

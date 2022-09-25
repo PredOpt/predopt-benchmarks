@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./listwise.sh
-Arguments      = $(modelname) $(capacity) $(temp) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(loss) $(capacity) $(temp) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
 error    = ./err/Knapsacklistwiserun_$(id).error
 log       = ./log/Knapsacklistwiserun_$(id).condor_log
 
-Queue modelname,capacity,temp,lr,tag,id from listwise.in
+Queue modelname,loss,capacity,temp,lr,tag,id from listwise.in

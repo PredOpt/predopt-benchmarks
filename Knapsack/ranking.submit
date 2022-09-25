@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./ranking.sh
-Arguments      = $(modelname) $(capacity) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(loss) $(capacity) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
 error    = ./err/Knapsackrankingrun_$(id).error
 log       = ./log/Knapsackrankingrun_$(id).condor_log
 
-Queue modelname,capacity,lr,tag,id from ranking.in
+Queue modelname,loss,capacity,lr,tag,id from ranking.in
