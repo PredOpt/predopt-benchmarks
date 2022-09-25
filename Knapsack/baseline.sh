@@ -9,5 +9,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python testknapsack${modelname}.py --capacity ${capacity} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/baseline_${id}.log
+python testknapsack.py --model ${modelname} --capacity ${capacity} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/baseline_${id}.log
 exit 0

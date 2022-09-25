@@ -17,8 +17,8 @@ from imle.wrapper import imle
 from imle.target import TargetDistribution
 from imle.noise import SumOfGammaNoiseDistribution
 
-class twostage_mse(pl.LightningModule):
-    def __init__(self,weights,capacity,n_items,lr=1e-1,seed=1):
+class baseline_mse(pl.LightningModule):
+    def __init__(self,weights,capacity,n_items,lr=1e-1,seed=0, **kwd):
         super().__init__()
         pl.seed_everything(seed)
         self.model = nn.Linear(8,1)
@@ -81,8 +81,8 @@ class twostage_mse(pl.LightningModule):
                     "monitor": "val_regret",
                 },
             }
-class multilayer_mse(twostage_mse):
-    def __init__(self,weights,capacity,n_items,lr=1e-1,seed=1, n_layers=3, n_hidden=4):
+class multilayer_mse(baseline_mse):
+    def __init__(self,weights,capacity,n_items,lr=1e-1, n_layers=3, n_hidden=4, seed=0, **kwd,):
         super().__init__(weights,capacity,n_items,lr,seed)
         
         layers = []
@@ -106,8 +106,8 @@ class multilayer_mse(twostage_mse):
     
 
 
-class SPO(twostage_mse):
-    def __init__(self,weights,capacity,n_items,lr=1e-1,seed=1):
+class SPO(baseline_mse):
+    def __init__(self,weights,capacity,n_items,lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         self.layer = SPOlayer(self.solver)
     
@@ -122,8 +122,8 @@ class SPO(twostage_mse):
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
-class DBB(twostage_mse):
-    def __init__(self,weights,capacity,n_items,lambda_val=1., lr=1e-1,seed=1):
+class DBB(baseline_mse):
+    def __init__(self,weights,capacity,n_items,lambda_val=1., lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         self.layer = DBBlayer(self.solver, lambda_val=lambda_val)
     
@@ -137,8 +137,8 @@ class DBB(twostage_mse):
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
-class FenchelYoung(twostage_mse):
-    def __init__(self,weights,capacity,n_items,sigma=0.1,num_samples=10, lr=1e-1,seed=1):
+class FenchelYoung(baseline_mse):
+    def __init__(self,weights,capacity,n_items,sigma=0.1,num_samples=10, lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)  
 
         fy_solver =  lambda y_: batch_solve(self.solver,y_) 
@@ -152,9 +152,9 @@ class FenchelYoung(twostage_mse):
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
-class IMLE(twostage_mse):
+class IMLE(baseline_mse):
     def __init__(self,weights,capacity,n_items, k=5, nb_iterations=100,nb_samples=1, beta=10.0,
-            input_noise_temperature=1.0, target_noise_temperature=1.0,  lr=1e-1,seed=1):
+            input_noise_temperature=1.0, target_noise_temperature=1.0,  lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         imle_solver = lambda y_: batch_solve(self.solver,y_)
 
@@ -173,8 +173,8 @@ class IMLE(twostage_mse):
         loss = ((sol - sol_hat)*y).sum(-1).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
-class DCOL(twostage_mse):
-    def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=1):
+class DCOL(baseline_mse):
+    def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         self.comblayer = cvx_knapsack_solver(weights,capacity,n_items,mu=mu)
     def training_step(self, batch, batch_idx):
@@ -186,8 +186,8 @@ class DCOL(twostage_mse):
         return loss    
 
 
-class QPTL(twostage_mse):
-    def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=1):
+class QPTL(baseline_mse):
+    def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         self.comblayer = qpt_knapsack_solver(weights,capacity,n_items,mu=mu)
     def training_step(self, batch, batch_idx):
@@ -198,8 +198,8 @@ class QPTL(twostage_mse):
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss  
 
-class IntOpt(twostage_mse):
-    def __init__(self,weights,capacity,n_items,thr=0.1,damping=1e-3,lr=1e-1,seed=1):
+class IntOpt(baseline_mse):
+    def __init__(self,weights,capacity,n_items,thr=0.1,damping=1e-3,lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         self.comblayer = intopt_knapsack_solver(weights,capacity,n_items, thr= thr,damping= damping)
     def training_step(self, batch, batch_idx):
@@ -217,8 +217,8 @@ class IntOpt(twostage_mse):
         return loss  
 
 from Trainer.RankingLosses import PointwiseLoss, ListwiseLoss, PairwisediffLoss, PairwiseLoss
-class CachingPO(twostage_mse):
-    def __init__(self, weights,capacity,n_items,init_cache,tau=1.,growth=0.1,loss="listwise",lr=1e-1,seed=1):
+class CachingPO(baseline_mse):
+    def __init__(self, weights,capacity,n_items,init_cache,tau=1.,growth=0.1,loss="listwise",lr=1e-1,seed=0, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed)
         '''tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
         '''
