@@ -10,5 +10,5 @@ echo ${tag}
 
 source ~/.bashrc
 source ../warcraft_sp/warcraft_venv/bin/activate
-python testknapsack${modelname}.py --capacity ${capacity} --mu "${mu}" --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/qptdcol_${id}.log
+python testknapsack.py --model ${modelname} --capacity ${capacity} --mu "${mu}" --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/qptdcol_${id}.log
 exit 0
