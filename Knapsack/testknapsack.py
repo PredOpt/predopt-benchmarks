@@ -8,7 +8,7 @@ import pandas as pd
 import torch
 from torch.utils.data import DataLoader
 from pytorch_lightning.callbacks import ModelCheckpoint
-from Trainer.PO_models import IMLE
+from Trainer.PO_models import *
 from Trainer.data_utils import KnapsackDataModule
 from pytorch_lightning import loggers as pl_loggers
 
