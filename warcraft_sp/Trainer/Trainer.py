@@ -224,7 +224,7 @@ class baseline(SPO):
 
 class DBB(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={},lambda_val=20., neighbourhood_fn =  "8-grid",
-        lr=1e-1, loss="hamming",seed=20,**kwd):
+        lr=1e-1, loss="regret",seed=20,**kwd):
 
         validation_metric = loss
         super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
@@ -280,7 +280,7 @@ class FenchelYoung(SPO):
 
 class IMLE(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, loss="hamming",k=5, nb_iterations=100,nb_samples=1, beta=10.0,
+        lr=1e-1, loss="regret",k=5, nb_iterations=100,nb_samples=1, beta=10.0,
         temperature=1.0, seed=20,**kwd):
         
         validation_metric = loss
@@ -318,7 +318,7 @@ class IMLE(SPO):
 
 class DPO(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, loss="hamming",sigma=0.1,num_samples=10 ,seed=20,**kwd):
+        lr=1e-1, loss="regret",sigma=0.1,num_samples=10 ,seed=20,**kwd):
         validation_metric = loss
         super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
         self.sigma = sigma
@@ -352,7 +352,7 @@ class DPO(SPO):
 
 class DCOL(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, loss="hamming",mu=1e-3,seed=20,**kwd):
+        lr=1e-3, loss="regret",mu=1e-3,seed=20,**kwd):
         validation_metric = loss
         super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
 
@@ -388,7 +388,7 @@ class DCOL(SPO):
 
 class IntOpt(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, loss="hamming",thr=0.1,damping=1e-3 ,seed=20,**kwd):
+        lr=1e-3, loss="regret",thr=0.1,damping=1e-3 ,seed=20,**kwd):
         validation_metric = loss
         if loss=="hamming":
             
@@ -424,7 +424,7 @@ class IntOpt(SPO):
 
 class QPTL(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, loss="hamming",mu=1e-3 ,seed=20,**kwd):
+        lr=1e-3, loss="regret",mu=1e-3 ,seed=20,**kwd):
         validation_metric = loss
         super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
 
