@@ -6,17 +6,17 @@
 
 getenv = True
 request_cpus = 10
-request_memory = 64 GB
+request_memory = 20 GB
 
 Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./baseline.sh
-Arguments      = $(modelname) $(imgsz) $(seed) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(loss) $(imgsz) $(seed) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
 error    = ./err/img12run_$(id).error
 log       = ./log/img12run_$(id).condor_log
 
-Queue modelname,imgsz,seed,lr,tag,id from baseline.in
+Queue modelname,loss,imgsz,seed,lr,tag,id from baseline.in
