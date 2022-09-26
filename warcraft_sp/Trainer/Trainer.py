@@ -18,56 +18,38 @@ from imle.wrapper import imle
 from imle.target import TargetDistribution
 from imle.noise import SumOfGammaNoiseDistribution
 
-class twostage_baseline(pl.LightningModule):
-    def __init__(self, metadata, model_name= "ResNet18", arch_params={}, neighbourhood_fn =  "8-grid",
-     lr=1e-1,  seed=20,loss="bce", validation_metric="regret"):
-        """
-        A class to implement two stage mse based baseline model and with test and validation module
-        Args:
-            model_name: ResNet for baseline
-            lr: learning rate
-            max_epoch: maximum number of epcohs
-            seed: seed for reproducibility 
-            loss: could be bce or mse
-            validation: which quantity to be monitored for validation, either regret or hamming
-        """
+
+
+
+class SPO(pl.LightningModule):
+    def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
+        lr=1e-1,validation_metric ='regret', seed=20,**kwd):
         super().__init__()
         pl.seed_everything(seed)
         self.metadata = metadata
         self.model = get_model(
-            model_name, out_features=self.metadata["output_features"], in_channels=self.metadata["num_channels"], arch_params=arch_params
+            model_name, out_features=self.metadata["output_features"], 
+            in_channels=self.metadata["num_channels"], arch_params=arch_params
         )
-        self.loss = loss
         self.lr = lr
         self.validation_metric = validation_metric
 
-        self.solver =   get_solver(neighbourhood_fn)#  ShortestPath(lambda_val=lambda_val, neighbourhood_fn= neighbourhood_fn)
+        self.solver =   get_solver(neighbourhood_fn)
 
     def forward(self,x):
         output = self.model(x)
-        if self.loss=="bce":
-            output = torch.sigmoid(output)
-        output = nn.ReLU()(output)
-
-        return output
-
+        relu_op = nn.ReLU()
+        return relu_op(output)
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
         # print("input shape",input.shape,"label shape",label.shape)
         output = self(input)
-        # print("Output shape", output.shape)
-        
-        
-        if self.loss == "bce":
-            criterion = nn.BCELoss()
-            flat_target = label.view(label.size()[0], -1)
-            training_loss = criterion(output, flat_target.to(torch.float32)).mean()
-        if self.loss=="mse":
-            criterion = nn.MSELoss(reduction='mean')
-            flat_target = true_weights.view(true_weights.size()[0], -1).type_as(true_weights)
-            training_loss = criterion(output,flat_target).mean()
-        self.log("train_loss",training_loss ,  on_step=True, on_epoch=True, )
+        weights = output.reshape(-1, output.shape[-1], output.shape[-1])
+        ### For SPO, we need the true weights as we have to compute 2*\hat{c} - c
+        shortest_path = self.comb_layer(weights, label, true_weights)
+        training_loss = self.loss_fn(shortest_path, label,  true_weights)
+        self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
     def validation_step(self, batch, batch_idx):
@@ -170,8 +152,6 @@ class twostage_baseline(pl.LightningModule):
         elif self.validation_metric=="hamming":
             monitor = "val_hammingloss"
         else:
-            print("-> Validation metric")
-            print(self.validation_metric)
             raise Exception("Don't know what quantity to monitor")
 
         return {
@@ -189,13 +169,65 @@ class twostage_baseline(pl.LightningModule):
             }
 
 
-class Blackbox(twostage_baseline):
+
+# metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
+#         lr=1e-1,validation_metric ='regret', seed=20,
+
+
+class baseline(pl.LightningModule):
+    def __init__(self, metadata, model_name= "ResNet18", arch_params={}, neighbourhood_fn =  "8-grid",
+     lr=1e-1,loss="bce", validation_metric="regret",  seed=20,**kwd):
+        """
+        A class to implement two stage mse based baseline model and with test and validation module
+        Args:
+            model_name: ResNet for baseline
+            lr: learning rate
+            max_epoch: maximum number of epcohs
+            seed: seed for reproducibility 
+            loss: could be bce or mse
+            validation: which quantity to be monitored for validation, either regret or hamming
+        """
+        super().__init__( metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed  )
+        
+        self.loss = loss
+        
+
+    def forward(self,x):
+        output = self.model(x)
+        if self.loss=="bce":
+            output = torch.sigmoid(output)
+        output = nn.ReLU()(output)
+
+        return output
+
+
+    def training_step(self, batch, batch_idx):
+        input, label, true_weights = batch
+        # print("input shape",input.shape,"label shape",label.shape)
+        output = self(input)
+        # print("Output shape", output.shape)
+        
+        
+        if self.loss == "bce":
+            criterion = nn.BCELoss()
+            flat_target = label.view(label.size()[0], -1)
+            training_loss = criterion(output, flat_target.to(torch.float32)).mean()
+        if self.loss=="mse":
+            criterion = nn.MSELoss(reduction='mean')
+            flat_target = true_weights.view(true_weights.size()[0], -1).type_as(true_weights)
+            training_loss = criterion(output,flat_target).mean()
+        self.log("train_loss",training_loss ,  on_step=True, on_epoch=True, )
+        return training_loss 
+
+
+
+
+class DBB(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={},lambda_val=20., neighbourhood_fn =  "8-grid",
-        lr=1e-1, seed=20,loss="hamming"):
+        lr=1e-1, loss="hamming",seed=20,**kwd):
 
         validation_metric = loss
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss, validation_metric)
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
         self.comb_layer =  BlackboxDifflayer(lambda_val=lambda_val, neighbourhood_fn= neighbourhood_fn)
 
         if loss=="hamming":
@@ -203,10 +235,6 @@ class Blackbox(twostage_baseline):
         if loss=="regret":
             self.loss_fn = RegretLoss()
 
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -219,39 +247,12 @@ class Blackbox(twostage_baseline):
         return training_loss 
 
 
-class SPO(twostage_baseline):
+
+
+class FenchelYoung(baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, seed=20,loss="hamming"):
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
-        self.comb_layer =  SPOlayer(neighbourhood_fn= neighbourhood_fn)
-        ########### For SPO, irrespective of the final loss, the gradient would be same  #################################
-        self.loss_fn = RegretLoss()
-
-
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
-
-    def training_step(self, batch, batch_idx):
-        input, label, true_weights = batch
-        # print("input shape",input.shape,"label shape",label.shape)
-        output = self(input)
-        weights = output.reshape(-1, output.shape[-1], output.shape[-1])
-        ### For SPO, we need the true weights as we have to compute 2*\hat{c} - c
-        shortest_path = self.comb_layer(weights, label, true_weights)
-        training_loss = self.loss_fn(shortest_path, label,  true_weights)
-        self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
-        return training_loss 
-
-
-
-class FenchelYoung(twostage_baseline):
-    def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, seed=20,loss="hamming",sigma=0.1,num_samples=10 ):
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
+        lr=1e-1, sigma=0.1,num_samples=10, validation_metric ='regret', seed=20,**kwd ):
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
         self.sigma = sigma
         self.num_samples = num_samples
         solver =   get_solver(neighbourhood_fn)
@@ -262,10 +263,7 @@ class FenchelYoung(twostage_baseline):
         # # if loss=="regret":
         # #     self.loss_fn = RegretLoss()
 
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
+
 
     def training_step(self, batch, batch_idx):
         criterion = fy.FenchelYoungLoss(self.fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = False, batched= True)
@@ -280,13 +278,13 @@ class FenchelYoung(twostage_baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss      
 
-class IMLE(twostage_baseline):
+class IMLE(baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, seed=20,loss="hamming",k=5, nb_iterations=100,nb_samples=1, beta=10.0,
-            input_noise_temperature=1.0, target_noise_temperature=1.0):
+        lr=1e-1, loss="hamming",k=5, nb_iterations=100,nb_samples=1, beta=10.0,
+        temperature=1.0, seed=20,**kwd):
         
         validation_metric = loss
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn, lr,  seed,loss, validation_metric)
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
         solver =   get_solver(neighbourhood_fn)
 
         target_distribution = TargetDistribution(alpha=1.0, beta=beta)
@@ -295,17 +293,13 @@ class IMLE(twostage_baseline):
         # @perturbations.perturbed(num_samples=num_samples, sigma=sigma, noise='gumbel',batched = False)
         self.imle_solver = imle(lambda weights: shortest_pathsolution(solver, -weights),
         target_distribution=target_distribution,noise_distribution=noise_distribution,
-        input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, nb_samples= nb_samples)
+        input_noise_temperature= temperature, target_noise_temperature= temperature, nb_samples= nb_samples)
 
         if loss=="hamming":
             self.loss_fn = HammingLoss()
         if loss=="regret":
             self.loss_fn = RegretLoss()
 
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -322,12 +316,11 @@ class IMLE(twostage_baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss  
 
-class DPO(twostage_baseline):
+class DPO(baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, seed=20,loss="hamming",sigma=0.1,num_samples=10 ):
+        lr=1e-1, loss="hamming",sigma=0.1,num_samples=10 ,seed=20,**kwd):
         validation_metric = loss
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss, validation_metric)
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
         self.sigma = sigma
         self.num_samples = num_samples
         solver =   get_solver(neighbourhood_fn)
@@ -341,10 +334,6 @@ class DPO(twostage_baseline):
         if loss=="regret":
             self.loss_fn = RegretLoss()
 
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -361,12 +350,11 @@ class DPO(twostage_baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
-class DCOL(twostage_baseline):
+class DCOL(baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, seed=20,loss="hamming",mu=1e-3):
+        lr=1e-3, loss="hamming",mu=1e-3,seed=20,**kwd):
         validation_metric = loss
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss, validation_metric)
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
 
         if loss=="hamming":
             self.loss_fn = HammingLoss()
@@ -376,10 +364,6 @@ class DCOL(twostage_baseline):
         print("-> meta data size", metadata["input_image_size"], 
         metadata["output_features"], metadata["output_shape"] )
 
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -402,23 +386,19 @@ class DCOL(twostage_baseline):
         return training_loss 
 
 
-class IntOpt(twostage_baseline):
+class IntOpt(baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, seed=20,loss="hamming",thr=0.1,damping=1e-3):
+        lr=1e-3, loss="hamming",thr=0.1,damping=1e-3 ,seed=20,**kwd):
         validation_metric = loss
         if loss=="hamming":
             
             self.loss_fn = HammingLoss()
         if loss=="regret":
             self.loss_fn = RegretLoss()
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss,validation_metric)
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
         self.comb_layer = IntoptDifflayer(metadata["output_shape"],thr, damping) 
 
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
+
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -442,11 +422,11 @@ class IntOpt(twostage_baseline):
 
 
 
-class QPTL(twostage_baseline):
+class QPTL(baseline):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-3, seed=20,loss="hamming",mu=1e-3 ):
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
+        lr=1e-3, loss="hamming",mu=1e-3 ,seed=20,**kwd):
+        validation_metric = loss
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
 
         if loss=="hamming":
             self.loss_fn = HammingLoss()
@@ -454,10 +434,6 @@ class QPTL(twostage_baseline):
             self.loss_fn = RegretLoss()
         self.comb_layer =  QptDifflayer(metadata["output_shape"], mu) 
 
-    def forward(self,x):
-        output = self.model(x)
-        relu_op = nn.ReLU()
-        return relu_op(output)
 
     def training_step(self, batch, batch_idx):
         input, label, true_weights = batch
@@ -474,9 +450,9 @@ class QPTL(twostage_baseline):
 
 
 
-class CachingPO(twostage_baseline):
+class CachingPO(baseline):
     def __init__(self, metadata,init_cache,tau=0.,growth=0.1, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
-        lr=1e-1, seed=20,loss="pointwise"):
+        lr=1e-1, loss="pointwise",validation_metric = 'regret',seed=20,**kwd):
         """
         A class to implement loss functions using soluton cache
         Args:
@@ -485,8 +461,8 @@ class CachingPO(twostage_baseline):
             growth: p_solve
             tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
         """
-        super().__init__(metadata, model_name, arch_params, neighbourhood_fn ,
-        lr,  seed,loss)
+        
+        super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
         if loss=="pointwise":
             self.loss_fn = PointwiseLoss()
         if loss=="pairwise":
