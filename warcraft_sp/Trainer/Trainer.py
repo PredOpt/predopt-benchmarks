@@ -174,7 +174,7 @@ class SPO(pl.LightningModule):
 #         lr=1e-1,validation_metric ='regret', seed=20,
 
 
-class baseline(pl.LightningModule):
+class baseline(SPO):
     def __init__(self, metadata, model_name= "ResNet18", arch_params={}, neighbourhood_fn =  "8-grid",
      lr=1e-1,loss="bce", validation_metric="regret",  seed=20,**kwd):
         """
@@ -249,7 +249,7 @@ class DBB(SPO):
 
 
 
-class FenchelYoung(baseline):
+class FenchelYoung(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, sigma=0.1,num_samples=10, validation_metric ='regret', seed=20,**kwd ):
         super().__init__(metadata, model_name,arch_params, neighbourhood_fn, lr, validation_metric,seed)
@@ -278,7 +278,7 @@ class FenchelYoung(baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss      
 
-class IMLE(baseline):
+class IMLE(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, loss="hamming",k=5, nb_iterations=100,nb_samples=1, beta=10.0,
         temperature=1.0, seed=20,**kwd):
@@ -316,7 +316,7 @@ class IMLE(baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss  
 
-class DPO(baseline):
+class DPO(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, loss="hamming",sigma=0.1,num_samples=10 ,seed=20,**kwd):
         validation_metric = loss
@@ -350,7 +350,7 @@ class DPO(baseline):
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 
 
-class DCOL(baseline):
+class DCOL(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-3, loss="hamming",mu=1e-3,seed=20,**kwd):
         validation_metric = loss
@@ -386,7 +386,7 @@ class DCOL(baseline):
         return training_loss 
 
 
-class IntOpt(baseline):
+class IntOpt(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-3, loss="hamming",thr=0.1,damping=1e-3 ,seed=20,**kwd):
         validation_metric = loss
@@ -422,7 +422,7 @@ class IntOpt(baseline):
 
 
 
-class QPTL(baseline):
+class QPTL(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-3, loss="hamming",mu=1e-3 ,seed=20,**kwd):
         validation_metric = loss
@@ -450,7 +450,7 @@ class QPTL(baseline):
 
 
 
-class CachingPO(baseline):
+class CachingPO(SPO):
     def __init__(self, metadata,init_cache,tau=0.,growth=0.1, model_name= "CombResnet18", arch_params={}, neighbourhood_fn =  "8-grid",
         lr=1e-1, loss="pointwise",validation_metric = 'regret',seed=20,**kwd):
         """
