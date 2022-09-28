@@ -71,8 +71,8 @@ class SPO(pl.LightningModule):
         
         criterion1 = nn.MSELoss(reduction='mean')
         mse =  criterion1(output, true_weights).mean()
-        if self.loss!= "bce":
-           output = torch.sigmoid(output)
+        # if self.loss!= "bce":
+        output = torch.sigmoid(output)
         criterion2 = nn.BCELoss()
         bceloss = criterion2(output, label.to(torch.float32)).mean()
 
@@ -108,8 +108,8 @@ class SPO(pl.LightningModule):
         
         criterion1 = nn.MSELoss(reduction='mean')
         mse =  criterion1(output, true_weights).mean()
-        if self.loss!= "bce":
-           output = torch.sigmoid(output)
+        # if self.loss!= "bce":
+        output = torch.sigmoid(output)
         criterion2 = nn.BCELoss()
         bceloss = criterion2(output, label.to(torch.float32)).mean()
 
@@ -194,8 +194,8 @@ class baseline(SPO):
 
     def forward(self,x):
         output = self.model(x)
-        if self.loss=="bce":
-            output = torch.sigmoid(output)
+        # if self.loss=="bce":
+        #     output = torch.sigmoid(output)
         output = nn.ReLU()(output)
 
         return output
@@ -211,6 +211,7 @@ class baseline(SPO):
         if self.loss == "bce":
             criterion = nn.BCELoss()
             flat_target = label.view(label.size()[0], -1)
+            output = torch.sigmoid(output)
             training_loss = criterion(output, flat_target.to(torch.float32)).mean()
         if self.loss=="mse":
             criterion = nn.MSELoss(reduction='mean')
