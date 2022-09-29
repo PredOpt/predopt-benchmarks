@@ -223,7 +223,6 @@ class baseline(SPO):
 
 
 
-
 class DBB(SPO):
     def __init__(self, metadata, model_name= "CombResnet18", arch_params={},lambda_val=20., neighbourhood_fn =  "8-grid",
         lr=1e-1, loss="regret",seed=20,**kwd):
