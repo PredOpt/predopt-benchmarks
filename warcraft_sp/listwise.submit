@@ -12,11 +12,11 @@ Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
 Executable     = ./listwise.sh
-Arguments      = $(modelname) $(imgsz) $(tau) $(growth) $(seed) $(lr) $(tag) $(id)
+Arguments      = $(modelname) $(loss) $(imgsz) $(tau) $(growth) $(seed) $(lr) $(tag) $(id)
 
 input   = /dev/null
 #output  = ./out/img12run_$(id).out
 error    = ./err/listwise_$(id).error
 log       = ./log/listwise_$(id).condor_log
 
-Queue modelname,imgsz,tau,growth,seed,lr,tag,id from listwise.in
+Queue modelname,loss,imgsz,tau,growth,seed,lr,tag,id from listwise.in
