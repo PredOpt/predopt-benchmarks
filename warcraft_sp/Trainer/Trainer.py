@@ -33,6 +33,7 @@ class SPO(pl.LightningModule):
         )
         self.lr = lr
         self.validation_metric = validation_metric
+        self.comb_layer =  SPOlayer( neighbourhood_fn= neighbourhood_fn)
 
         self.solver =   get_solver(neighbourhood_fn)
 

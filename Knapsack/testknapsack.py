@@ -13,7 +13,7 @@ from Trainer.data_utils import KnapsackDataModule
 from pytorch_lightning import loggers as pl_loggers
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--capacity", type=int, help="capacity of knapsack", default= 12)
+parser.add_argument("--capacity", type=int, help="capacity of knapsack", default= 12, required= True)
 parser.add_argument("--model", type=str, help="name of the model", default= "", required= True)
 
 parser.add_argument("--lambda_val", type=float, help="interpolaton parameter blackbox", default= 1., required=False)
@@ -100,6 +100,7 @@ for seed in range(10):
         model =  modelcls(weights,capacity,n_items,init_cache=cache,seed=seed, **argument_dict)
     else:
         model =  modelcls(weights,capacity,n_items,seed=seed, **argument_dict)
+    validresult = trainer.validate(model,datamodule=data)
     
     trainer.fit(model, datamodule=data)
     best_model_path = checkpoint_callback.best_model_path
