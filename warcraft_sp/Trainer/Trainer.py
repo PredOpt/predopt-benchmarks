@@ -36,6 +36,7 @@ class SPO(pl.LightningModule):
         self.comb_layer =  SPOlayer( neighbourhood_fn= neighbourhood_fn)
 
         self.solver =   get_solver(neighbourhood_fn)
+        self.loss_fn = RegretLoss()
 
     def forward(self,x):
         output = self.model(x)
