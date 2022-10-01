@@ -93,11 +93,11 @@ class PairwisediffLoss(torch.nn.Module):
 
 
 class ListnetLoss(torch.nn.Module):
-    def __init__(self, tau=0., minimize=True,mode="B"):
+    def __init__(self, tau=1., minimize=True):
         super().__init__()
         self.tau = tau
         self.mm  = 1 if minimize else -1
-        self.mode = mode 
+
     def forward(self, pred_weights, true_weights, target, cache):
 
         loss = 0
