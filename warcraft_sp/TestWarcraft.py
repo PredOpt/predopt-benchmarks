@@ -91,10 +91,10 @@ def seed_all(seed):
 # seed = args.seed
 
 ################## Define the outputfile
-outputfile = "Rslt/{}{}seed{}_index{}.csv".format(modelname, img_size,seed, index)
-regretfile = "Rslt/{}{}Regretseed{}_index{}.csv".format(modelname, img_size,seed, index)
-ckpt_dir =  "ckpt_dir/{}{}seed{}_index{}/".format(modelname, img_size,seed, index)
-log_dir = "lightning_logs/{}{}seed{}_index{}/".format(modelname, img_size,seed, index)
+outputfile = "Rslt/{}{}{}seed{}_index{}.csv".format(modelname,args.loss, img_size,seed, index)
+regretfile = "Rslt/{}{}{}Regretseed{}_index{}.csv".format(modelname,args.loss, img_size,seed, index)
+ckpt_dir =  "ckpt_dir/{}{}{}seed{}_index{}/".format(modelname, args.loss, img_size,seed, index)
+log_dir = "lightning_logs/{}{}{}seed{}_index{}/".format(modelname, args.loss, img_size,seed, index)
 learning_curve_datafile = "LearningCurve/{}_".format(modelname)+"_".join( ["{}_{}".format(k,v) for k,v  in explicit.items() ]  )+".csv"
 # shutil.rmtree(log_dir,ignore_errors=True)
 
