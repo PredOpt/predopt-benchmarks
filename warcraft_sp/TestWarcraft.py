@@ -95,7 +95,7 @@ outputfile = "Rslt/{}{}{}seed{}_index{}.csv".format(modelname,args.loss, img_siz
 regretfile = "Rslt/{}{}{}Regretseed{}_index{}.csv".format(modelname,args.loss, img_size,seed, index)
 ckpt_dir =  "ckpt_dir/{}{}{}seed{}_index{}/".format(modelname, args.loss, img_size,seed, index)
 log_dir = "lightning_logs/{}{}{}seed{}_index{}/".format(modelname, args.loss, img_size,seed, index)
-learning_curve_datafile = "LearningCurve/{}_".format(modelname)+"_".join( ["{}_{}".format(k,v) for k,v  in explicit.items() ]  )+".csv"
+learning_curve_datafile = "LearningCurve/{}{}{}seed{}_".format(modelname, args.loss, img_size,seed)+"_".join( ["{}_{}".format(k,v) for k,v  in explicit.items() ]  )+".csv"
 # shutil.rmtree(log_dir,ignore_errors=True)
 
 
