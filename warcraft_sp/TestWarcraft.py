@@ -153,26 +153,26 @@ for k,v in explicit.items():
 with open(outputfile, 'a') as f:
     df.to_csv(f, header=f.tell()==0)
 
-# ##### Save Learning Curve Data ######################
-# parent_dir=   log_dir+"lightning_logs/"
-# version_dirs = [os.path.join(parent_dir,v) for v in os.listdir(parent_dir)]
+##### Save Learning Curve Data ######################
+parent_dir=   log_dir+"lightning_logs/"
+version_dirs = [os.path.join(parent_dir,v) for v in os.listdir(parent_dir)]
 
-# walltimes = []
-# steps = []
-# regrets= []
-# mses = []
-# for logs in version_dirs:
-#     event_accumulator = EventAccumulator(logs)
-#     event_accumulator.Reload()
+walltimes = []
+steps = []
+regrets= []
+mses = []
+for logs in version_dirs:
+    event_accumulator = EventAccumulator(logs)
+    event_accumulator.Reload()
 
-#     events = event_accumulator.Scalars("val_hammingloss_epoch")
-#     walltimes.extend( [x.wall_time for x in events])
-#     steps.extend([x.step for x in events])
-#     regrets.extend([x.value for x in events])
-#     events = event_accumulator.Scalars("val_mse_epoch")
-#     mses.extend([x.value for x in events])
+    events = event_accumulator.Scalars("val_hammingloss")
+    walltimes.extend( [x.wall_time for x in events])
+    steps.extend([x.step for x in events])
+    regrets.extend([x.value for x in events])
+    events = event_accumulator.Scalars("val_mse")
+    mses.extend([x.value for x in events])
 
-# df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_hammingloss": regrets,
-# "val_mse": mses })
-# df['model'] ='IMLEHamming'
-# df.to_csv(learning_curve_datafile,index=False)
+df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_hammingloss": regrets,
+"val_mse": mses })
+df['model'] = modelname + args.loss
+df.to_csv(learning_curve_datafile,index=False)
