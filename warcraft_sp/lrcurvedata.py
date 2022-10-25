@@ -1,7 +1,7 @@
 from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
 from pytorch_lightning.callbacks import ModelCheckpoint 
 from glob import glob
-parent_dir=   log_dir+"lightning_logs/"
+# parent_dir=   log_dir+"lightning_logs/"
 files = glob("lightning_logs/SPO30x30seed*")
 for file_name in files:
 	print(file_name)
