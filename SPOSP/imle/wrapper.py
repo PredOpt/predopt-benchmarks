@@ -103,7 +103,7 @@ def imle(function: Callable[[Tensor], Tensor] = None,
                 ctx.save_for_backward(input, noise, perturbed_output)
 
                 # [BATCH_SIZE * N_SAMPLES, ...]
-                res = perturbed_output.view(perturbed_input_2d_shape)
+                # res = perturbed_output.view(perturbed_input_2d_shape)
                 ####  New line added
                 res = perturbed_output.mean(dim=1)
                 return res
@@ -117,9 +117,12 @@ def imle(function: Callable[[Tensor], Tensor] = None,
 
                 input_shape = input.shape
                 batch_size = input_shape[0]
-                ####  New line added
                 instance_shape = input_shape[1:]
+
+
+                ####  New line added
                 dy = dy.view(batch_size, 1, -1).repeat(1,nb_samples, 1).view([batch_size*nb_samples] +list(instance_shape))
+
 
                 # dy is [BATCH_SIZE * N_SAMPLES, ...]
                 dy_shape = dy.shape

@@ -293,7 +293,7 @@ class IMLE(SPO):
         noise_distribution = SumOfGammaNoiseDistribution(k= k, nb_iterations= nb_iterations)
 
         # @perturbations.perturbed(num_samples=num_samples, sigma=sigma, noise='gumbel',batched = False)
-        self.imle_solver = imle(lambda weights: shortest_pathsolution(solver, -weights),
+        self.imle_solver = imle(lambda weights: shortest_pathsolution(solver, weights),
         target_distribution=target_distribution,noise_distribution=noise_distribution,
         input_noise_temperature= temperature, target_noise_temperature= temperature, nb_samples= nb_samples)
 
@@ -313,7 +313,7 @@ class IMLE(SPO):
         # training_loss =  criterion(weights,label).mean()
 
 
-        shortest_path = self.imle_solver(-weights)
+        shortest_path = self.imle_solver(weights)
         training_loss = self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss  
@@ -328,7 +328,7 @@ class DPO(SPO):
         solver =   get_solver(neighbourhood_fn)
 
         # @perturbations.perturbed(num_samples=num_samples, sigma=sigma, noise='gumbel',batched = False)
-        self.dpo_solver = perturbations.perturbed(lambda weights: shortest_pathsolution(solver, -weights),
+        self.dpo_solver = perturbations.perturbed(lambda weights: shortest_pathsolution(solver, weights),
         num_samples=num_samples, sigma=sigma, noise='gumbel',batched = True)
 
         if loss=="hamming":
@@ -347,7 +347,7 @@ class DPO(SPO):
         # training_loss =  criterion(weights,label).mean()
 
 
-        shortest_path = self.dpo_solver(-weights)
+        shortest_path = self.dpo_solver(weights)
         training_loss = self.loss_fn(shortest_path, label, true_weights)
         self.log("train_loss",training_loss,  on_step=True, on_epoch=True, )
         return training_loss 

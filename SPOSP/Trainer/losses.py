@@ -57,21 +57,23 @@ def WorstcaseSPOLoss(solver, minimize=True):
 
 
 
-def BlackboxLoss(solver,mu=0.1, minimize=True):
+def BlackboxDifflayer(solver, lambda_val=0.1, minimize=True):
     mm = 1 if minimize else -1
     class BlackboxLoss_cls(torch.autograd.Function):
         @staticmethod
-        def forward(ctx, y_pred, y_true, sol_true):
+        def forward(ctx, y_pred):
             sol_hat = solver.solution_fromtorch(y_pred)
-            sol_perturbed = solver.solution_fromtorch(y_pred + mu* y_true)
+            # sol_perturbed = solver.solution_fromtorch(y_pred + lambda_val* y_true)
             # sol_true = solver.solution_fromtorch(y_true)
-            ctx.save_for_backward(sol_perturbed,  sol_true, sol_hat)
-            return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
+            ctx.save_for_backward(y_pred,  sol_hat)
+            return sol_hat
+            # return   mm*(  sol_hat - sol_true).dot(y_true)/( sol_true.dot(y_true) ) # changed to per cent rgeret
 
         @staticmethod
         def backward(ctx, grad_output):
-            sol_perturbed,  sol_true, sol_hat = ctx.saved_tensors
-            return -mm*(sol_hat - sol_perturbed)/mu, None, None
+            y_pred,  sol_hat = ctx.saved_tensors
+            sol_perturbed = solver.solution_fromtorch(y_pred + lambda_val* grad_output)
+            return -mm*(sol_hat - sol_perturbed)/lambda_val, None, None
             
     return BlackboxLoss_cls.apply
 
@@ -80,26 +82,6 @@ def BlackboxLoss(solver,mu=0.1, minimize=True):
 
 
 ###################################### Ranking Loss  Functions  #########################################
-
-def pointwise_mse_loss(y_hat,y_true):
-    c_hat = y_hat.unsqueeze(-1)
-    c_true = y_true.unsqueeze(-1)
-    c_diff = c_hat - c_true
-    loss = ( c_diff.square().sum())/len(c_diff)
-    return loss   
-
-def pointwise_crossproduct_loss(y_hat,y_true):
-    c_hat = y_hat.unsqueeze(-1)
-    c_true = y_true.unsqueeze(-1)
-    c_diff = c_hat - c_true
-    loss = (torch.bmm(c_diff, c_diff.transpose(2,1)).sum() )/len(c_diff)
-    return loss   
-
-def pointwise_custom_loss(y_hat,y_true, *wd,**kwd):
-    loss =  pointwise_mse_loss(y_hat,y_true) + pointwise_crossproduct_loss(y_hat,y_true)
-    return loss 
-
-
 
 def pointwise_loss(y_hat,y_true,sol_true, cache,*wd,**kwd):
     '''

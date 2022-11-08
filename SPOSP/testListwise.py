@@ -79,12 +79,12 @@ for N in [100,1000]:
                 trainer = pl.Trainer(max_epochs= max_epochs,callbacks=[checkpoint_callback],  min_epochs=5, logger=tb_logger)
 
                 init_cache = batch_solve(spsolver, torch.from_numpy(y_train),relaxation =False)
-                model = CachingPO(init_cache=init_cache,loss_fn=Listnet_loss, tau=temperature, net= normed_net, 
+                model = CachingPO(init_cache=init_cache,loss ="listwise", tau=temperature, net= normed_net, 
                 growth= growth, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
                 trainer.fit(model, datamodule=data)
                 best_model_path = checkpoint_callback.best_model_path
                 model = CachingPO.load_from_checkpoint(best_model_path,
-                init_cache=init_cache,loss_fn=Listnet_loss, tau=temperature,net= normed_net, 
+                init_cache=init_cache,loss ="listwise", tau=temperature,net= normed_net, 
                 growth= growth, lr= lr,l1_weight=l1_weight, seed=seed, )
 
                 y_pred = model(torch.from_numpy(x_test).float()).squeeze()

@@ -36,7 +36,7 @@ for N in [100,1000]:
                 batchsize  = 128
                 max_epochs = 40
                 nb_iterations,nb_samples= 1, 1
-                input_noise_temperature , target_noise_temperature, k = 2,2,5
+                temperature, k = 2,5
                 ######################################  Data Reading #########################################
 
                 Train_dfx= pd.read_csv("SyntheticData/TraindataX_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None)
@@ -80,13 +80,13 @@ for N in [100,1000]:
                     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
                     trainer = pl.Trainer(max_epochs= max_epochs,callbacks=[checkpoint_callback],  min_epochs=5, logger=tb_logger)
                     model = IMLE(net= normed_net,nb_iterations= nb_iterations,nb_samples= nb_samples, k=k,beta= beta,
-                            input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, 
+                            temperature= temperature,
                             lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
                     trainer.fit(model, datamodule=data)
                     best_model_path = checkpoint_callback.best_model_path
                     model = IMLE.load_from_checkpoint(best_model_path,
                     net= normed_net,nb_iterations= nb_iterations,nb_samples= nb_samples, k=k,beta= beta,
-                            input_noise_temperature= input_noise_temperature, target_noise_temperature= target_noise_temperature, 
+                            temperature= temperature,
                             lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
 
                     y_pred = model(torch.from_numpy(x_test).float()).squeeze()

@@ -28,7 +28,7 @@ normed_net = nn.Sequential(*net_layers)
 for N in [100,1000]:
     for noise in [0.0,0.5]:
         for deg in [4,6,8,2,1]:
-            for mu in [100.,1000]:
+            for lambda_val in [100.,1000]:
                 ###################################### Hyperparams #########################################
                 lr = 0.1
                 l1_weight = 1e-5
@@ -74,11 +74,11 @@ for N in [100,1000]:
                     
                     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
                     trainer = pl.Trainer(max_epochs= max_epochs,callbacks=[checkpoint_callback],  min_epochs=5, logger=tb_logger)
-                    model = Blackbox(net= normed_net, mu=mu, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
+                    model = DBB(net= normed_net, lambda_val=lambda_val, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
                     trainer.fit(model, datamodule=data)
                     best_model_path = checkpoint_callback.best_model_path
-                    model = Blackbox.load_from_checkpoint(best_model_path,
-                    net= normed_net, mu=mu, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
+                    model = DBB.load_from_checkpoint(best_model_path,
+                    net= normed_net, lambda_val=lambda_val, lr= lr,l1_weight=l1_weight, seed=seed, max_epochs= max_epochs)
 
                     y_pred = model(torch.from_numpy(x_test).float()).squeeze()
                     sol_test =  batch_solve(spsolver, torch.from_numpy(y_test).float())
@@ -94,7 +94,7 @@ for N in [100,1000]:
 
                     df['l1_weight'] = l1_weight
                     df['lr'] = lr
-                    df['mu'] = mu
+                    df['lambda_val'] = lambda_val
                     with open(regretfile, 'a') as f:
                         df.to_csv(f, header=f.tell()==0)
 
@@ -111,7 +111,7 @@ for N in [100,1000]:
                     df['N'] = N
                     df['l1_weight'] = l1_weight
                     df['lr'] = lr
-                    df['mu'] = mu
+                    df['lambda_val'] = lambda_val
                     with open(outputfile, 'a') as f:
                         df.to_csv(f, header=f.tell()==0)
 

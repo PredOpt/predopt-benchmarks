@@ -17,8 +17,8 @@ from DPO import perturbations
 from DPO import fenchel_young as fy
 logging.basicConfig(filename='Uniquesolutions.log', level=logging.INFO)
 
-class twostage_regression(pl.LightningModule):
-    def __init__(self,net,exact_solver = spsolver, lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
+class baseline(pl.LightningModule):
+    def __init__(self,net,exact_solver = spsolver, lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20,**kwd):
         """
         A class to implement two stage mse based model and with test and validation module
         Args:
@@ -124,8 +124,8 @@ class twostage_regression(pl.LightningModule):
                 },
             }
 
-class SPO(twostage_regression):
-    def __init__(self,net,exact_solver = spsolver,loss_fn=SPOLoss,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
+class SPO(baseline):
+    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20,**kwd):
         """
         Implementaion of SPO+ loss subclass of twostage model
             loss_fn: loss function 
@@ -133,45 +133,53 @@ class SPO(twostage_regression):
  
         """
         super().__init__(net,exact_solver, lr, l1_weight,max_epochs, seed)
-        self.loss_fn = loss_fn
+        self.loss_fn =  SPOLoss(self.exact_solver)
+
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
         for ii in range(len(y)):
-            loss += self.loss_fn(self.exact_solver)(y_hat[ii],y[ii], sol[ii])
+            loss += self.loss_fn(y_hat[ii],y[ii], sol[ii])
         training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
         self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
         return training_loss  
 
-class Blackbox(twostage_regression):
+class DBB(baseline):
     """
     Implemenation of Blackbox differentiation gradient
     """
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1,mu =0.1, l1_weight=0.1,max_epochs=30, seed=20):
+    def __init__(self,net,exact_solver = spsolver,lr=1e-1,lambda_val =0.1, l1_weight=0.1,max_epochs=30, seed=20,**kwd):
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed)
-        self.mu = mu
-        self.save_hyperparameters("lr","mu")
+        self.lambda_val = lambda_val
+        self.layer = BlackboxDifflayer(self.exact_solver,self.lambda_val)
+        self.save_hyperparameters("lr","lambda_val")
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
-        loss = 0
+        sol_hat = self.layer(y_hat)
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
-        for ii in range(len(y)):
-            loss += BlackboxLoss(self.exact_solver,self.mu)(y_hat[ii],y[ii], sol[ii])
-        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        training_loss =  ((sol_hat - sol)*y).sum(-1).mean() + l1penalty * self.l1_weight
+        
+
+        # loss = 0
+        
+        # for ii in range(len(y)):
+        #     loss += self.layer(y_hat[ii],y[ii], sol[ii])
+        
+        # training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
-        self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
+        self.log("train_loss", ((sol_hat - sol)*y).sum(-1).mean(),  on_step=True, on_epoch=True, )
         return training_loss   
 
-class CachingPO(twostage_regression):
-    def __init__(self,loss_fn,init_cache, net,exact_solver = spsolver,growth=0.1,tau=0.,lr=1e-1,
-        l1_weight=0.1,max_epochs=30, seed=20):
+class CachingPO(baseline):
+    def __init__(self,loss,init_cache, net,exact_solver = spsolver,growth=0.1,tau=0.,lr=1e-1,
+        l1_weight=0.1,max_epochs=30, seed=20,**kwd):
         """
         A class to implement loss functions using soluton cache
         Args:
@@ -189,7 +197,15 @@ class CachingPO(twostage_regression):
         """
         super().__init__(net,exact_solver, lr, l1_weight,max_epochs, seed)
         # self.save_hyperparameters()
-        self.loss_fn = loss_fn
+        if loss=="pointwise":
+            self.loss_fn = pointwise_loss
+        if loss=="pairwise":
+            self.loss_fn = pairwise_loss
+
+        if loss == "pairwise_diff":
+            self.loss_fn = pairwise_diffloss
+        if loss == "listwise":
+            self.loss_fn = Listnet_loss
         ### The cache
         init_cache_np = init_cache.detach().numpy()
         init_cache_np = np.unique(init_cache_np,axis=0)
@@ -221,27 +237,30 @@ class CachingPO(twostage_regression):
 
 
 
-class DCOL(twostage_regression):
+class DCOL(baseline):
     '''
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20,mu=0.1):
+    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20,mu=0.1,**kwd):
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed)
-        self.solver = cvxsolver(mu=mu)
+        self.layer = cvxsolver(mu=mu)
     def training_step(self, batch, batch_idx):
-        solver = self.solver
+   
         x,y, sol = batch
         y_hat =  self(x).squeeze()
         loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
-        for ii in range(len(y)):
-            sol_hat = solver.shortest_pathsolution(y_hat[ii])
-            ### The loss is regret but c.dot(y) is constant so need not to be considered
-            loss +=  (sol_hat ).dot(y[ii])
+        sol_hat = self.layer.shortest_pathsolution(y_hat)
+        training_loss =  ((sol_hat - sol)*y).sum(-1).mean() + l1penalty * self.l1_weight
+
+        # for ii in range(len(y)):
+        #     sol_hat = self.layer.shortest_pathsolution(y_hat[ii])
+        #     ### The loss is regret but c.dot(y) is constant so need not to be considered
+        #     loss +=  (sol_hat ).dot(y[ii])
  
-        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
+        # training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
         self.log("train_loss",loss/len(y),  on_step=True, on_epoch=True, )
@@ -252,7 +271,7 @@ class QPTL(DCOL):
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,  max_epochs=30, seed=20,mu=0.1):
+    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,  max_epochs=30, seed=20,mu=0.1,**kwd):
         
 
         super().__init__(net,exact_solver,lr, l1_weight,max_epochs, seed, mu)  
@@ -263,7 +282,7 @@ class IntOpt(DCOL):
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,thr=0.1,damping=1e-3,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20):
+    def __init__(self,net,exact_solver = spsolver,thr=0.1,damping=1e-3,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20,**kwd):
         
 
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed)  
@@ -276,75 +295,63 @@ class IntOpt(DCOL):
 
 
 
-class IMLE(twostage_regression):
+class IMLE(baseline):
     def __init__(self,net,solver=spsolver,exact_solver = spsolver,k=5,nb_iterations=100,nb_samples=1, beta=10.,
-            input_noise_temperature=1.0, target_noise_temperature=1.0,lr=1e-1,l1_weight=0.1,max_epochs=30,seed=20):
+            temperature=1.0, lr=1e-1,l1_weight=0.1,max_epochs=30,seed=20 ,**kwd):
         super().__init__(net,exact_solver , lr, l1_weight, max_epochs, seed)
         self.solver = solver
         self.k = k
         self.nb_iterations = nb_iterations
         self.nb_samples = nb_samples
-        self.target_noise_temperature = target_noise_temperature
-        self.input_noise_temperature = input_noise_temperature
+        # self.target_noise_temperature = target_noise_temperature
+        # self.input_noise_temperature = input_noise_temperature
         target_distribution = TargetDistribution(alpha=1.0, beta= beta)
         noise_distribution = SumOfGammaNoiseDistribution(k= self.k, nb_iterations=self.nb_iterations)
 
-        imle_solver = lambda y_: solver.solution_fromtorch(-y_)
+        imle_solver = lambda y_: solver.solution_fromtorch(y_)
 
         self.imle_layer = imle(imle_solver,target_distribution=target_distribution,
-        noise_distribution=noise_distribution, input_noise_temperature=input_noise_temperature, 
-        target_noise_temperature=self.target_noise_temperature,nb_samples=self.nb_samples)
+        noise_distribution=noise_distribution, input_noise_temperature= temperature, 
+        target_noise_temperature= temperature,nb_samples=self.nb_samples)
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
         
-        sol_hat = self.imle_layer(-y_hat)
+        sol_hat = self.imle_layer(y_hat)
         loss = ((sol_hat - sol)*y).sum(-1).mean()
         training_loss= loss  + l1penalty * self.l1_weight
 
-
-        # def imle_solver(y):
-        #     #     I-MLE assumes that the solver solves a maximisation problem, but here the `solver` function solves
-        #     # a minimisation problem, so we flip the sign twice. Feed negative cost coefficient to imle_solver and then 
-        #     # flip it again to feed the actual cost to the solver
-        #     return spsolver.solution_fromtorch(-y)
-
-        # ########### Also the forward pass returns the solution of the perturbed cost, which is bit strange
-        # ###########
-        # l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
-        # for ii in range(len(y)):
-        #     sol_hat = imle_solver(-y_hat[ii].unsqueeze(0)) # Feed neagtive cost coefficient
-        #     loss +=  (sol_hat*y[ii]).mean()
-
-        # training_loss=  loss/len(y)  + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
         self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
         self.log("train_loss",loss,  on_step=True, on_epoch=True, )
         return training_loss 
 ###################################### Differentiable Perturbed Optimizer #########################################
 
-class DPO(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,lr=1e-1,l1_weight=0.1, max_epochs= 30, seed=20):
+class DPO(baseline):
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,num_samples=10, sigma=0.1, lr=1e-1,l1_weight=0.1, max_epochs= 30, seed=20,**kwd):
         super().__init__(net,exact_solver , lr, l1_weight, max_epochs, seed)
         self.solver = solver
+        @perturbations.perturbed(num_samples= num_samples, sigma= sigma, noise='gumbel',batched = True)
+        def dpo_layer(y):
+            return spsolver.solution_fromtorch(y)
+        self.dpo_layer = dpo_layer
+
+
         self.save_hyperparameters("lr")
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
-        loss = 0
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
 
-        @perturbations.perturbed(num_samples=10, sigma=0.1, noise='gumbel',batched = False)
-        def dpo_solver(y):
-            return spsolver.solution_fromtorch(-y)
-
-        for ii in range(len(y)):
-            sol_hat = dpo_solver(-y_hat[ii]) # Feed neagtive cost coefficient
-            loss +=  ( sol_hat  ).dot(y[ii])
-        training_loss=  loss/len(y)  + l1penalty * self.l1_weight
-        self.log("train_loss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        
+        sol_hat = self.dpo_layer(y_hat)
+        loss = ((sol_hat - sol)*y).sum(-1).mean()
+        training_loss= loss  + l1penalty * self.l1_weight        
+        self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )
+        self.log("train_l1penalty",l1penalty * self.l1_weight,  on_step=True, on_epoch=True, )
+        self.log("train_loss",loss,  on_step=True, on_epoch=True, )
         return training_loss
 
 
@@ -352,14 +359,14 @@ class DPO(twostage_regression):
 
 ################################ Implementation of a Fenchel-Young loss using perturbation techniques #########################################
 
-class FenchelYoung(twostage_regression):
-    def __init__(self,net,solver=spsolver,exact_solver = spsolver,num_samples=10, sigma=0.1,lr=1e-1, l1_weight=1e-5, max_epochs=30, seed=20):
+class FenchelYoung(baseline):
+    def __init__(self,net,solver=spsolver,exact_solver = spsolver,num_samples=10, sigma=0.1,lr=1e-1, l1_weight=1e-5, max_epochs=30, seed=20,**kwd):
         super().__init__(net,exact_solver , lr, l1_weight, max_epochs, seed)
         self.solver = solver
         self.num_samples = num_samples
         self.sigma = sigma
         self.save_hyperparameters("lr")
-        self.fy_solver = lambda y: solver.solution_fromtorch(y)
+        self.fy_solver = lambda y_: solver.solution_fromtorch(y_)
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
@@ -372,13 +379,11 @@ class FenchelYoung(twostage_regression):
         #     return spsolver.solution_fromtorch(y)
         ############# Define the Loss functions, we can set maximization to be false
 
-        criterion = fy.FenchelYoungLoss(self.fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = False, batched=True)
+        criterion = fy.FenchelYoungLoss(self.fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = False,
+         batched=True)
         l1penalty = sum([(param.abs()).sum() for param in self.net.parameters()])
-
-        # for ii in range(len(y)):
-        #     sol_true = fy_solver(y[ii])
-        #     loss +=  criterion(y_hat[ii],sol_true)
-        loss = criterion(y_hat, sol)
+        loss = criterion(y_hat, sol).mean()
+    
 
         training_loss=  loss + l1penalty * self.l1_weight
         self.log("train_totalloss",training_loss, prog_bar=True, on_step=True, on_epoch=True, )

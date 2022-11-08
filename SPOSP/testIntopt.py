@@ -102,7 +102,7 @@ for N in [100]:
                     df['l1_weight'] = l1_weight
                     df['lr'] = lr
                     df['thr'] = thr
-                    df['damping'] =     
+                    df['damping'] =    damping 
                     with open(regretfile, 'a') as f:
                         df.to_csv(f, header=f.tell()==0)
 
