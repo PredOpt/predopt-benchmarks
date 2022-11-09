@@ -10,6 +10,6 @@ id=${7}
 echo ${tag}
 
 source ~/.bashrc
-source warcraft_venv/bin/activate
+source ../warcraft_sp/warcraft_venv/bin/activate
 python TestSP.py --model ${modelname} --N ${N} --noise ${noise} --deg ${deg} --lr "${lr}" --output_tag "${tag}" --index ${id}   > ./log/baseline_${id}.log
 exit 0
