@@ -67,7 +67,7 @@ class shortestpath_solver:
                 solutions.append(torch.from_numpy(self.shortest_pathsolution( y_torch[ii].detach().numpy())).float())
             return torch.stack(solutions)
 ###################################### Gurobi Shortest path Solver #########################################
-import gurobipy as gp
+# import gurobipy as gp
 # class shortestpath_solver:
 #     def __init__(self,G= G):
 #         self.G = G
