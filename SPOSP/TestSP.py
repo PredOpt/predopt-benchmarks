@@ -105,7 +105,7 @@ ckpt_dir =  "ckpt_dir/{}{}_{}{}{}_index{}/".format(modelname, args.loss,N,noise,
 log_dir = "lightning_logs/{}{}_{}{}{}_index{}/".format(modelname, args.loss, N,noise,deg,  index)
 learning_curve_datafile = "LearningCurve/{}{}_{}{}{}_".format(modelname, args.loss, N,noise,deg)+".csv"
 
-
+################## DataReading
 Train_dfx= pd.read_csv("SyntheticData/TraindataX_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None)
 Train_dfy= pd.read_csv("SyntheticData/Traindatay_N_{}_noise_{}_deg_{}.csv".format(N,noise,deg),header=None,)
 x_train =  Train_dfx.T.values.astype(np.float32)
@@ -126,7 +126,7 @@ valid_df =  datawrapper( x_valid,y_valid)
 test_df =  datawrapper( x_test,y_test)
 
 
-for seed in range(2):
+for seed in range(10):
     seed_all(seed)
 
     g = torch.Generator()
