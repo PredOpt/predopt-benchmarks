@@ -3,6 +3,7 @@ import numpy as np
 import torch 
 from torch import nn, optim
 import torch.nn.functional as F
+from qpth.qp import QPFunction
 ###################################### Graph Structure ###################################################
 V = range(25)
 E = []
@@ -157,9 +158,10 @@ import cvxpy as cp
 import cvxpylayers
 from cvxpylayers.torch import CvxpyLayer
 from intopt.intopt_model import IPOfunc
-from qpthlocal.qp import QPFunction
-from qpthlocal.qp import QPSolvers
-from qpthlocal.qp import make_gurobi_model
+from qpth.qp import QPFunction
+# from qpthlocal.qp import QPFunction
+# from qpthlocal.qp import QPSolvers
+# from qpthlocal.qp import make_gurobi_model
 
 ### Build cvxpy model prototype
 class cvxsolver:
@@ -184,7 +186,7 @@ class cvxsolver:
         A = torch.from_numpy((nx.incidence_matrix(G,oriented=True).todense())).float()  
         b =  torch.zeros(len(A))
         b[0] = -1
-        b[-1] =1        
+        b[-1] = 1        
         sol, = self.layer(A,b,y)
         return sol
     # def solution_fromtorch(self,y_torch):
@@ -212,53 +214,63 @@ class intoptsolver:
 class qpsolver:
     def __init__(self,G=G,mu=1e-6):
         self.G = G
-        A = nx.incidence_matrix(G,oriented=True).todense()
-        b =  np.zeros(len(A))
+        A = nx.incidence_matrix(G,oriented=True).todense().astype(np.float32)
+        b =  np.zeros(len(A)).astype(np.float32)
         b[0] = -1
-        b[-1] =1
+        b[-1] = 1
         self.mu = mu
         G_lb = -1*np.eye(A.shape[1])
         h_lb = np.zeros(A.shape[1])
         G_ub = np.eye(A.shape[1])
         h_ub = np.ones(A.shape[1])
-        G_ineq = np.concatenate((G_lb, G_ub))
-        h_ineq = np.concatenate((h_lb, h_ub))
+        G_ineq = np.concatenate((G_lb, G_ub)).astype(np.float32)
+        h_ineq = np.concatenate((h_lb, h_ub)).astype(np.float32)
+        Q =  mu*torch.eye(A.shape[1]).float()
 
         # G_ineq = G_lb
         # h_ineq = h_lb
 
 
-        self.model_params_quad = make_gurobi_model(G_ineq,h_ineq,
-            A, b, np.zeros((A.shape[1],A.shape[1]))  ) #mu*np.eye(A.shape[1])
-        self.solver = QPFunction(verbose=False, solver=QPSolvers.GUROBI,
-                        model_params=self.model_params_quad)
+        # self.model_params_quad = make_gurobi_model(G_ineq,h_ineq,
+        #     A, b, np.zeros((A.shape[1],A.shape[1]))  ) #mu*np.eye(A.shape[1])
+        # self.solver = QPFunction(verbose=False, solver=QPSolvers.GUROBI,
+        #                 model_params=self.model_params_quad)
+
+        self.A, self.b,self.G, self.h, self.Q =  torch.from_numpy(A), torch.from_numpy(b),  torch.from_numpy(G_ineq),  torch.from_numpy(h_ineq ),  Q
+        self.layer = QPFunction()        
+
     def shortest_pathsolution(self, y):
-        G = self.G
-        A = torch.from_numpy((nx.incidence_matrix(G,oriented=True).todense())).float()  
-        b =  torch.zeros(len(A))
-        b[0] = -1
-        b[-1] = 1      
-        Q =    self.mu*torch.eye(A.shape[1])
-        ###########   There are two ways we can set the cosntraints of 0<= x <=1
-        ########### Either specifying in matrix form, or changing the lb and ub in the qp.py file
-        ########### Curretnyly We're specifying it in constraint form
+        A,b,G,h,  Q = self.A, self.b,self.G, self.h, self.Q
+        sol = self.layer(Q,y,G,h,A,b)
+        return sol
 
 
-        G_lb = -1*torch.eye(A.shape[1])
-        h_lb = torch.zeros(A.shape[1])
-        G_ub = torch.eye(A.shape[1])
-        h_ub = torch.ones(A.shape[1])
-        G_ineq = torch.cat((G_lb,G_ub))
-        h_ineq = torch.cat((h_lb,h_ub))
-        # G_ineq = G_lb
-        # h_ineq = h_lb
+    #     G = self.G
+    #     A = torch.from_numpy((nx.incidence_matrix(G,oriented=True).todense())).float()  
+    #     b =  torch.zeros(len(A))
+    #     b[0] = -1
+    #     b[-1] = 1      
+    #     Q =    self.mu*torch.eye(A.shape[1])
+    #     ###########   There are two ways we can set the cosntraints of 0<= x <=1
+    #     ########### Either specifying in matrix form, or changing the lb and ub in the qp.py file
+    #     ########### Curretnyly We're specifying it in constraint form
 
 
-        sol = self.solver(Q.expand(1, *Q.shape),
-                            y , 
-                            G_ineq.expand(1,*G_ineq.shape), h_ineq.expand(1,*h_ineq.shape), 
-                            A.expand(1, *A.shape),b.expand(1, *b.shape))
+    #     G_lb = -1*torch.eye(A.shape[1])
+    #     h_lb = torch.zeros(A.shape[1])
+    #     G_ub = torch.eye(A.shape[1])
+    #     h_ub = torch.ones(A.shape[1])
+    #     G_ineq = torch.cat((G_lb,G_ub))
+    #     h_ineq = torch.cat((h_lb,h_ub))
+    #     # G_ineq = G_lb
+    #     # h_ineq = h_lb
 
-        return sol.squeeze()
-    # def solution_fromtorch(self,y_torch):
-    #     return self.shortest_pathsolution( y_torch.float())  
+
+    #     sol = self.solver(Q.expand(1, *Q.shape),
+    #                         y , 
+    #                         G_ineq.expand(1,*G_ineq.shape), h_ineq.expand(1,*h_ineq.shape), 
+    #                         A.expand(1, *A.shape),b.expand(1, *b.shape))
+
+    #     return sol.squeeze()
+    # # def solution_fromtorch(self,y_torch):
+    # #     return self.shortest_pathsolution( y_torch.float())  
