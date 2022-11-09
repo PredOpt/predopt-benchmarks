@@ -11,12 +11,12 @@ request_memory = 24 GB
 Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
 
 Universe       = vanilla
-Executable     = ./fy.sh
+Executable     = ./dpo.sh
 Arguments      = $(modelname) $(N) $(noise) $(deg) $(sigma) $(nsamp) $(lr) $(tag) $(id)
 
 input   = /dev/null
-#output  = ./out/dfy_$(id).out
-error    = ./err/dfy_$(id).error
-log       = ./log/dfy_$(id).condor_log
+#output  = ./out/dpo_$(id).out
+error    = ./err/dpo_$(id).error
+log       = ./log/dpo_$(id).condor_log
 
-Queue modelname,N,noise,deg,sigma,nsamp,lr,tag,id from fy.in
+Queue modelname,N,noise,deg,sigma,nsamp,lr,tag,id from dpo.in
