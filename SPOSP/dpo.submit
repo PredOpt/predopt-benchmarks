@@ -1,0 +1,22 @@
+	############
+#
+# Example submit file for vanilla job
+#
+############
+
+getenv = True
+request_cpus = 4
+request_memory = 24 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
+
+Universe       = vanilla
+Executable     = ./fy.sh
+Arguments      = $(modelname) $(N) $(noise) $(deg) $(sigma) $(nsamp) $(lr) $(tag) $(id)
+
+input   = /dev/null
+#output  = ./out/dfy_$(id).out
+error    = ./err/dfy_$(id).error
+log       = ./log/dfy_$(id).condor_log
+
+Queue modelname,N,noise,deg,sigma,nsamp,lr,tag,id from fy.in

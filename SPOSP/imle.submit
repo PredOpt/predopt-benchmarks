@@ -1,0 +1,22 @@
+	############
+#
+# Example submit file for vanilla job
+#
+############
+
+getenv = True
+request_cpus = 4
+request_memory = 24 GB
+
+Requirements      = TARGET.vm_name == "ITS-U20-NFS-20210413"
+
+Universe       = vanilla
+Executable     = ./imle.sh
+Arguments      = $(modelname) $(N) $(noise) $(deg) $(temp) $(beta) $(k) $(nsample) $(niter) $(lr) $(tag) $(id)
+
+input   = /dev/null
+#output  = ./out/dimle_$(id).out
+error    = ./err/dimle_$(id).error
+log       = ./log/dimle_$(id).condor_log
+
+Queue modelname,N,noise,deg,temp,beta,k,nsample,niter,lr,tag,id from imle.in
