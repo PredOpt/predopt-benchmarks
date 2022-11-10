@@ -38,7 +38,7 @@ parser.add_argument("--net", type=str, help="Type of Model Archietcture, one of:
 
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
-parser.add_argument("--max_epochs", type=int, help="maximum number of epochs", default= 70, required=False)
+parser.add_argument("--max_epochs", type=int, help="maximum number of epochs", default= 40, required=False)
 parser.add_argument("--l1", type=float, help="Weight of L1 regularization", default= 1e-5, required=False)
 
 parser.add_argument("--lambda_val", type=float, help="interpolaton parameter blackbox", default= 1., required=False)
