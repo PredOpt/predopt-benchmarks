@@ -15,8 +15,8 @@ Executable     = ./qpt.sh
 Arguments      = $(modelname) $(N) $(noise) $(deg) $(mu) $(reg) $(lr) $(tag) $(id)
 
 input   = /dev/null
-#output  = ./out/qpt_$(id).out
-error    = ./err/qpt_$(id).error
-log       = ./log/qpt_$(id).condor_log
+#output  = ./out/entropic_$(id).out
+error    = ./err/entropic_$(id).error
+log       = ./log/entropic_$(id).condor_log
 
 Queue modelname,N,noise,deg,mu,reg,lr,tag,id from qpt.in

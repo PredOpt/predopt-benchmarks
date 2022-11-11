@@ -184,7 +184,7 @@ class cvxsolver:
         if self.regularizer=='quadratic':
             objective = cp.Minimize(c @ x+ self.mu*cp.pnorm(x, p=2))  
         elif self.regularizer=='entropic':
-            objective = cp.Minimize(c @ x -  self.mu*cp.entr(x))  
+            objective = cp.Minimize(c @ x -  self.mu*cp.sum(cp.entr(x)) )
         problem = cp.Problem(objective, constraints)
         self.layer = CvxpyLayer(problem, parameters=[A, b,c], variables=[x])
     def shortest_pathsolution(self, y):
