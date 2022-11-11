@@ -242,9 +242,9 @@ class DCOL(baseline):
     Implementation of
     Differentiable Convex Optimization Layers
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20,mu=0.1,**kwd):
+    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=0.1,max_epochs=30, seed=20,mu=0.1,regularizer='quadratic',**kwd):
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed)
-        self.layer = cvxsolver(mu=mu)
+        self.layer = cvxsolver(mu=mu, regularizer=regularizer)
     def training_step(self, batch, batch_idx):
    
         x,y, sol = batch

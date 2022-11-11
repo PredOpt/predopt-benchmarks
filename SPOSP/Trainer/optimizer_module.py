@@ -165,9 +165,13 @@ from qpth.qp import QPFunction
 
 ### Build cvxpy model prototype
 class cvxsolver:
-    def __init__(self,G=G, mu=1e-6):
+    def __init__(self,G=G, mu=1e-6,regularizer='quadratic'):
+        '''
+        regularizer: form of regularizer- either quadratic or entropic
+        '''
         self.G = G
         self.mu = mu
+        self.regularizer = regularizer
     def make_proto(self):
         #### Maybe we can model a better LP formulation
         G = self.G
@@ -177,7 +181,10 @@ class cvxsolver:
         c = cp.Parameter(num_edges)
         x = cp.Variable(num_edges)
         constraints = [x >= 0,x<=1,A @ x == b]
-        objective = cp.Minimize(c @ x+ self.mu*cp.pnorm(x, p=2))  #cp.pnorm(A @ x - b, p=1)
+        if self.regularizer=='quadratic':
+            objective = cp.Minimize(c @ x+ self.mu*cp.pnorm(x, p=2))  
+        elif self.regularizer=='entropic':
+            objective = cp.Minimize(c @ x -  self.mu*cp.entr(x))  
         problem = cp.Problem(objective, constraints)
         self.layer = CvxpyLayer(problem, parameters=[A, b,c], variables=[x])
     def shortest_pathsolution(self, y):

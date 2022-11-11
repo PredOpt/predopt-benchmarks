@@ -53,6 +53,7 @@ parser.add_argument("--beta", type=float, help="parameter lambda of IMLE", defau
 
 
 parser.add_argument("--mu", type=float, help="Regularization parameter DCOL & QPTL", default= 10., required=False)
+parser.add_argument("--regularizer", type=str, help="Types of Regularization", default= 'quadratic', required=False)
 parser.add_argument("--thr", type=float, help="threshold parameter", default= 1e-6)
 parser.add_argument("--damping", type=float, help="damping parameter", default= 1e-8)
 parser.add_argument("--tau", type=float, help="parameter of rankwise losses", default= 1e-8)
