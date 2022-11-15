@@ -32,7 +32,7 @@ parser.add_argument("--temperature", type=float, help="input and target noise te
 parser.add_argument("--nb_iterations", type=int, help="number of iterations", default= 10, required=False)
 parser.add_argument("--k", type=int, help="parameter k", default= 10, required=False)
 parser.add_argument("--nb_samples", type=int, help="Number of samples paprameter", default= 10, required=False)
-parser.add_argument("--beta", type=float, help="parameter lambda of IMLE", default= 10., required=False)
+parser.add_argument("--beta", type=float, help="lambda parameter of IMLE", default= 10., required=False)
 
 
 parser.add_argument("--mu", type=float, help="Regularization parameter DCOL & QPTL", default= 10., required=False)
