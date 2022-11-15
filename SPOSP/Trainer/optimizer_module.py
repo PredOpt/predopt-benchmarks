@@ -45,6 +45,7 @@ class shortestpath_solver:
                 constraints[ii].SetCoefficient(x[jj], A[ii,jj])
         
         
+        
         objective = solver.Objective()
         for jj in range(A.shape[1]):
             objective.SetCoefficient(x[jj], float(y[jj]))
@@ -52,12 +53,28 @@ class shortestpath_solver:
         status = solver.Solve()
         # print(status)
         sol = np.zeros(A.shape[1])
+        ##############   Ortools LP solver has an error called Abnormal (status code=4)
+        ############## I Don't know why it happens. But I observe multiplying the coefficients by 100 normally solves the problem
+        ############## and Return  the right solution. So, I do the following
+
+        if status==4:
+            y_prime =   np.copy( y )
+            while(status==4):
+                y_prime *=1e2
+                objective = solver.Objective()
+                for jj in range(A.shape[1]):
+                    objective.SetCoefficient(x[jj], float(y_prime[jj]))
+                objective.SetMinimization()
+                status = solver.Solve()
         if status ==  pywraplp.Solver.OPTIMAL:
-            
             for i, v in enumerate(x):
                 sol[i] = v.solution_value()
         else:
-                raise Exception("Optimal Solution not found")
+            print("->Solver status: ",status)
+            print("Coefficent vector: ",y)
+            for i, v in enumerate(x):
+                print( v.solution_value())
+            raise Exception("Optimal Solution not found")
         return sol
     def solution_fromtorch(self,y_torch):
         if y_torch.dim()==1:
@@ -69,7 +86,7 @@ class shortestpath_solver:
             return torch.stack(solutions)
 ###################################### Gurobi Shortest path Solver #########################################
 # import gurobipy as gp
-# class shortestpath_solver:
+# class gurobi_shortestpath_solver:
 #     def __init__(self,G= G):
 #         self.G = G
     
@@ -152,7 +169,7 @@ class shortestpath_solver:
 #                 nonunique_cnt += nn
 #             return torch.stack(solutions) , nonunique_cnt      
         
-spsolver =  shortestpath_solver()
+# spsolver =  shortestpath_solver()
 
 import cvxpy as cp
 import cvxpylayers
