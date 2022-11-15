@@ -169,7 +169,9 @@ class shortestpath_solver:
 #                 nonunique_cnt += nn
 #             return torch.stack(solutions) , nonunique_cnt      
         
-# spsolver =  shortestpath_solver()
+
+        
+spsolver =  shortestpath_solver()
 
 import cvxpy as cp
 import cvxpylayers

@@ -15,8 +15,8 @@ Executable     = ./imle.sh
 Arguments      = $(modelname) $(N) $(noise) $(deg) $(temp) $(beta) $(k) $(nsample) $(niter) $(lr) $(tag) $(id)
 
 input   = /dev/null
-#output  = ./out/dimle_$(id).out
-error    = ./err/dimle_$(id).error
-log       = ./log/dimle_$(id).condor_log
+#output  = ./out/imle_$(id).out
+error    = ./err/imle_$(id).error
+log       = ./log/imle_$(id).condor_log
 
 Queue modelname,N,noise,deg,temp,beta,k,nsample,niter,lr,tag,id from imle.in
