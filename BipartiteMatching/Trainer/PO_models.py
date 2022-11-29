@@ -175,13 +175,37 @@ class FenchelYoung(baseline_mse):
             # fy_solver = lambda y_: batch_solve(self.solver,y_,m[i],batched=False)
             criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= False)
             loss += criterion(y_hat[i], sol[i]).mean()
-
-
-
         # criterion = fy.FenchelYoungLoss(fy_solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= True)
         # loss = criterion(y_hat, sol).mean()
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
+
+class DPO(baseline_mse):
+    def __init__(self,solver,sigma=0.1,num_samples=10, 
+        lr=1e-1,mode='sigmoid',n_layers=2, seed=0, **kwd):
+        self.sigma = sigma
+        self.num_samples = num_samples
+        super().__init__(solver,lr,mode,n_layers,seed)
+    def training_step(self, batch, batch_idx):
+        x,y,sol,m = batch
+        y_hat =  self(x).squeeze()
+        loss = 0
+        for i in range(len(y_hat)):
+            def solver(y_):
+                sol = []
+                ### FY extend the size of y to num_sample*batch
+                for j in range(len(y_)):
+                     sol.append(  batch_solve(self.solver,y_[j],m[i],batched=False).unsqueeze(0) )
+                
+                return torch.cat(sol).float()
+            op = perturbations.perturbed(solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= False)( y_hat[i] )
+            loss += y[i].dot(sol[i] - op)
+
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
+
+
+
 class IMLE(baseline_mse):
     def __init__(self,solver,k=5, nb_iterations=100,nb_samples=1, beta=10.0,
             # input_noise_temperature=1.0, target_noise_temperature=1.0, 

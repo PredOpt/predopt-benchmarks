@@ -152,6 +152,29 @@ class FenchelYoung(baseline_mse):
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
+class DPO(baseline_mse):
+    def __init__(self,weights,capacity,n_items,sigma=0.1,num_samples=10, lr=1e-1,seed=0, **kwd):
+        super().__init__(weights,capacity,n_items,lr,seed)  
+
+        fy_solver =  lambda y_: batch_solve(self.solver,y_) 
+        self.criterion = fy.FenchelYoungLoss(fy_solver, num_samples= num_samples, 
+        sigma= sigma,maximize = True, batched= True)
+
+        @perturbations.perturbed(num_samples= num_samples, sigma= sigma, noise='gumbel',batched = True)
+        def dpo_layer(y):
+            return  batch_solve(self.solver,y)
+        self.layer = dpo_layer
+
+    def training_step(self, batch, batch_idx):
+        x,y,sol = batch
+        y_hat =  self(x).squeeze()
+        sol_hat = self.layer(y_hat ) 
+        # print("shape of sol")
+        # print(sol_hat.shape, sol.shape)
+        loss = ((sol - sol_hat)*y).sum(-1).mean()
+        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
+        return loss
+
 class IMLE(baseline_mse):
     def __init__(self,weights,capacity,n_items, k=5, nb_iterations=100,nb_samples=1, beta=10.0,
             temperature=1.0,   lr=1e-1,seed=0, **kwd):
