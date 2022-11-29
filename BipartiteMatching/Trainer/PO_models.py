@@ -198,7 +198,7 @@ class DPO(baseline_mse):
                      sol.append(  batch_solve(self.solver,y_[j],m[i],batched=False).unsqueeze(0) )
                 
                 return torch.cat(sol).float()
-            op = perturbations.perturbed(solver, num_samples= self.num_samples, sigma= self.sigma,maximize = True, batched= False)( y_hat[i] )
+            op = perturbations.perturbed(solver, num_samples= self.num_samples, sigma= self.sigma,noise='gumbel', batched= False)( y_hat[i] )
             loss += y[i].dot(sol[i] - op)
 
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
