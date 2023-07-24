@@ -1,3 +1,5 @@
+This directory corresponds to the Warcraft shortest path problem/
+
 To download the data go inside the data folder and run 
 ```
 ./data_prep.sh
