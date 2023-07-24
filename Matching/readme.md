@@ -1,3 +1,5 @@
+This directory corresponds to the diverse bipartite matching problem.
+
 To download the data run
 ```
 ./get_data.sh
