@@ -1,27 +1,31 @@
 import argparse
 from argparse import Namespace
 import pytorch_lightning as pl
+from pytorch_lightning import loggers as pl_loggers
+import pandas as pd
+import numpy as np
+import torch
 import shutil
 import random
-import numpy as np
-import pandas as pd
-import torch
-from torch.utils.data import DataLoader
-from pytorch_lightning.callbacks import ModelCheckpoint
 from Trainer.PO_models import *
-from pytorch_lightning import loggers as pl_loggers
-from Trainer.data_utils import EnergyDataModule
-from Trainer.comb_solver import data_reading
+from pytorch_lightning.callbacks import ModelCheckpoint
+from Trainer.data_utils import CoraMatchingDataModule, return_trainlabel
+from Trainer.bipartite import bmatching_diverse
 from distutils.util import strtobool
+
+params_dict = { "1":{'p':0.1, 'q':0.1}, "2":{'p':0.25, 'q':0.25},"3":{'p':0.5, 'q':0.5},  }
+
+
 parser = argparse.ArgumentParser()
-parser.add_argument("--instance", type=int, help="Solve for instance 1, 2 or 3?", default= 1, required= True)
 parser.add_argument("--model", type=str, help="name of the model", default= "", required= True)
-parser.add_argument("--loss", type= str, help="loss", default= "", required=False)
+parser.add_argument("--instance", type=str, help="{1:{'p':0.1, 'q':0.1}, 2:{'p':0.25, 'q':0.25},3:{'p':0.5, 'q':0.5}", default= "1", required=True)
+parser.add_argument("--loss", type= str, help="loss", default= "", required= False)
+
 
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
-parser.add_argument("--batch_size", type=int, help="batch size", default= 64, required=False)
-parser.add_argument("--max_epochs", type=int, help="maximum number of epochs", default= 20, required=False)
-# parser.add_argument("--l1_weight", type=float, help="Weight of L1 regularization", default= 1e-5, required=False)
+parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
+parser.add_argument("--max_epochs", type=int, help="maximum number of epochs", default= 30, required=False)
+parser.add_argument("--l1_weight", type=float, help="Weight of L1 regularization", default= 1e-5, required=False)
 
 
 parser.add_argument("--lambda_val", type=float, help="interpolaton parameter blackbox", default= 1., required=False)
@@ -46,7 +50,10 @@ parser.add_argument("--growth", type=float, help="growth parameter of rankwise l
 
 parser.add_argument('--scheduler', dest='scheduler',  type=lambda x: bool(strtobool(x)))
 args = parser.parse_args()
-load = args.instance
+
+
+# parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=False)
+# parser.add_argument("--index", type=int, help="index", default= 50, required=False)
 
 class _Sentinel:
     pass
@@ -60,6 +67,12 @@ sentinel_ns = Namespace(**{key:sentinel for key in argument_dict})
 parser.parse_args(namespace=sentinel_ns)
 
 explicit = {key:value for key, value in vars(sentinel_ns).items() if value is not sentinel }
+######## Solver for this instance
+params = params_dict[ argument_dict['instance']]
+solver = bmatching_diverse(**params)
+if modelname=="CachingPO":
+    cache = return_trainlabel( solver,params )
+# ###################################### Hyperparams #########################################
 
 
 torch.use_deterministic_algorithms(True)
@@ -72,63 +85,49 @@ def seed_all(seed):
     np.random.seed(seed)
     random.seed(seed)
 
+# ################## Define the outputfile
+outputfile = "Rslt/{}matching{}{}.csv".format(modelname, args.loss,  args.instance)
+regretfile = "Rslt/{}matchingRegret{}{}.csv".format(modelname,   args.loss,args.instance)
+ckpt_dir =  "ckpt_dir/{}{}{}/".format(modelname,  args.loss,args.instance)
+log_dir = "lightning_logs/{}{}{}/".format(modelname,  args.loss,args.instance)
 
-################## Define the outputfile
-outputfile = "Rslt/RuntimeRun.{}{}Energy.csv".format(modelname,args.loss)
-regretfile = "Rslt/RuntimeRun.{}{}EnergyRegret.csv".format( modelname,args.loss )
-ckpt_dir =  "ckpt_dir/{}{}/".format( modelname,args.loss)
-log_dir = "lightning_logs/{}{}/".format(  modelname,args.loss )
-learning_curve_datafile = "LearningCurve/RuntimeRun.{}_".format(modelname)+"_".join( ["{}_{}".format(k,v) for k,v  in explicit.items()] )+".csv"  
-
-
-param = data_reading("SchedulingInstances/load{}/day01.txt".format(load))
+learning_curve_datafile = "LearningCurve/{}_".format(modelname)+"_".join( ["{}_{}".format(k,v) for k,v  in explicit.items()] )+".csv"  
 
 shutil.rmtree(log_dir,ignore_errors=True)
 
 for seed in range(10):
-    seed_all(seed)
     shutil.rmtree(ckpt_dir,ignore_errors=True)
     checkpoint_callback = ModelCheckpoint(
-            #monitor="val_regret",mode="min",
-            dirpath=ckpt_dir, 
-            filename="model-{epoch:02d}-{val_regret:.8f}",
-            )
+                    # monitor="val_regret",mode="min",
+                    dirpath=ckpt_dir, 
+                    filename="model-{epoch:02d}-{val_regret:.8f}",
+                    
+                )
+    seed_all(seed)
 
     g = torch.Generator()
-    g.manual_seed(seed)    
-    data =  EnergyDataModule(param =  param, batch_size= argument_dict['batch_size'], generator=g, seed= seed)
+    g.manual_seed(seed)
 
-    if modelname=="CachingPO":
-        cache = torch.from_numpy (data.train_df.sol)
+    data =  CoraMatchingDataModule(solver,params= params, 
+    batch_size= argument_dict['batch_size'], generator=g, num_workers=4)
     tb_logger = pl_loggers.TensorBoardLogger(save_dir= log_dir, version=seed)
-    trainer = pl.Trainer(max_epochs= argument_dict['max_epochs'], 
-    min_epochs=1,logger=tb_logger, callbacks=[checkpoint_callback])
     if modelname=="CachingPO":
-        model =  modelcls(param =  param,  init_cache=cache,seed=seed, **argument_dict)
+        model = modelcls(init_cache=cache, solver=solver,seed=seed, **argument_dict)
     else:
-        model =  modelcls(param =  param,   seed=seed, **argument_dict)
-    validresult = trainer.validate(model,datamodule=data)
-    
+        model = modelcls(solver=solver,seed=seed, **argument_dict)
+
+    trainer = pl.Trainer(max_epochs=  argument_dict['max_epochs'], min_epochs=3, 
+    logger=tb_logger, callbacks=[checkpoint_callback])
     trainer.fit(model, datamodule=data)
+
     best_model_path = checkpoint_callback.best_model_path
-
+    # print("Model Path:",best_model_path)
     if modelname=="CachingPO":
-        model =  modelcls.load_from_checkpoint(best_model_path,
-        param =  param,  init_cache=cache,seed=seed, **argument_dict)
+        model = modelcls.load_from_checkpoint(best_model_path ,  init_cache=cache, solver=solver,seed=seed,
+    **argument_dict)
     else:
-        model =  modelcls.load_from_checkpoint(best_model_path,
-        param =  param,   seed=seed, **argument_dict)
-   ##### SummaryWrite ######################
-    validresult = trainer.validate(model,datamodule=data)
-    testresult = trainer.test(model, datamodule=data)
-    df = pd.DataFrame({**testresult[0], **validresult[0]},index=[0])
-    for k,v in explicit.items():
-        df[k] = v
-    df['seed'] = seed
-    df['instance'] = load
-    with open(outputfile, 'a') as f:
-            df.to_csv(f, header=f.tell()==0)
-
+        model = modelcls.load_from_checkpoint(best_model_path ,solver=solver,seed=seed,
+    **argument_dict)    
 
     regret_list = trainer.predict(model, data.test_dataloader())
     
@@ -137,11 +136,20 @@ for seed in range(10):
     df.index.name='instance'
     for k,v in explicit.items():
         df[k] = v
-    df['seed'] = seed
-    df['instance'] = load    
+    df['seed']= seed
+ 
     with open(regretfile, 'a') as f:
         df.to_csv(f, header=f.tell()==0)
 
+
+    testresult = trainer.test(model, datamodule=data)
+    df = pd.DataFrame(testresult )
+    for k,v in explicit.items():
+        df[k] = v
+    df['seed']= seed
+
+    with open(outputfile, 'a') as f:
+            df.to_csv(f, header=f.tell()==0)
 
 
 ###############################  Save  Learning Curve Data ########
@@ -169,3 +177,4 @@ df = pd.DataFrame({"step": steps,'wall_time':walltimes,  "val_regret": regrets,
 "val_mse": mses })
 df['model'] = modelname
 df.to_csv(learning_curve_datafile)
+
