@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader
 from torch.autograd import Variable
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from Trainer.comb_solver import knapsack_solver, cvx_knapsack_solver, qpt_knapsack_solver, intopt_knapsack_solver
+from Trainer.comb_solver import knapsack_solver, cvx_knapsack_solver,  intopt_knapsack_solver
 from Trainer.utils import batch_solve, regret_fn, abs_regret_fn, regret_list,  growpool_fn
 from Trainer.diff_layer import SPOlayer, DBBlayer
 
@@ -150,9 +150,7 @@ class DPO(baseline_mse):
         x,y,sol = batch
         y_hat =  self(x).squeeze()
         sol_hat = self.layer(y_hat ) 
-        # print("shape of sol")
-        # print(sol_hat.shape, sol.shape)
-        loss = ((sol - sol_hat)*y).sum(-1).mean()
+        loss = ((sol - sol_hat)*y).sum(-1).mean()  ## to minimze regret
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
@@ -172,12 +170,13 @@ class IMLE(baseline_mse):
         x,y,sol = batch
         y_hat =  self(x).squeeze()
         sol_hat = self.layer(y_hat ) 
-        # print("shape of sol")
-        # print(sol_hat.shape, sol.shape)
-        loss = ((sol - sol_hat)*y).sum(-1).mean()
+        loss = ((sol - sol_hat)*y).sum(-1).mean()  ## to minimze regret
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 class DCOL(baseline_mse):
+    '''
+    Implementation oF QPTL using cvxpyayers
+    '''
     def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed, scheduler)
         self.comblayer = cvx_knapsack_solver(weights,capacity,n_items,mu=mu)
@@ -190,17 +189,7 @@ class DCOL(baseline_mse):
         return loss    
 
 
-class QPTL(baseline_mse):
-    def __init__(self,weights,capacity,n_items,mu=1.,lr=1e-1,seed=0,scheduler=False, **kwd):
-        super().__init__(weights,capacity,n_items,lr,seed, scheduler)
-        self.comblayer = qpt_knapsack_solver(weights,capacity,n_items,mu=mu)
-    def training_step(self, batch, batch_idx):
-        x,y,sol = batch
-        y_hat =  self(x).squeeze()
-        sol_hat = self.comblayer(y_hat)
-        loss = ((sol - sol_hat)*y).sum(-1).mean()
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss  
+
 
 class IntOpt(baseline_mse):
     def __init__(self,weights,capacity,n_items,thr=0.1,damping=1e-3,lr=1e-1,seed=0,scheduler=False, **kwd):

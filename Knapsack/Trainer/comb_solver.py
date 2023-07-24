@@ -63,28 +63,7 @@ class cvx_knapsack_solver(nn.Module):
         return sol
 
 
-class qpt_knapsack_solver(nn.Module):
-    def __init__(self, weights,capacity,n_items, mu=1.):
-        super().__init__()
-        self.weights=  weights
-        self.capacity = capacity
-        self.n_items = n_items  
-        A = weights.reshape(1,-1).astype(np.float32)
-        b = np.array([capacity]).astype(np.float32)
-        A_lb  = -np.eye(n_items).astype(np.float32)
-        b_lb = np.zeros(n_items).astype(np.float32)
-        A_ub  = np.eye(n_items).astype(np.float32)
-        b_ub = np.ones(n_items).astype(np.float32)
 
-        G = np.concatenate((A_lb, A_ub   ), axis=0).astype(np.float32)
-        h = np.concatenate(( b_lb, b_ub )).astype(np.float32)
-        Q =  mu*torch.eye(n_items).float()
-        self.A, self.b,self.G, self.h, self.Q =  torch.from_numpy(A), torch.from_numpy(b),  torch.from_numpy(G),  torch.from_numpy(h),  Q
-        self.layer = QPFunction()
-    def forward(self,costs):
-        A,b,G,h,  Q = self.A, self.b,self.G, self.h, self.Q
-        sol = self.layer(Q,-costs,G,h,A,b)
-        return sol
 from intopt.intopt import intopt
 class intopt_knapsack_solver(nn.Module):
     def __init__(self, weights,capacity,n_items, thr=0.1,damping=1e-3, diffKKT = False, dopresolve = True,):
