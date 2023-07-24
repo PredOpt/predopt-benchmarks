@@ -1,3 +1,5 @@
+This directory corresponds to the portfolio optimization problem.
+
 First download the data by running
 ```
 gdown 17P_hXJhvVsdcc1dGBGhAn5r5rkhNMsWj
