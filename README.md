@@ -1,16 +1,19 @@
 ## Installation instructions
 
-### Conda
+
 
 Installation requires packages within a virtual environement. This way, scripts and libraries installed are isolated from others on your machine.
-### Alternatively, instead of using conda, you can use `venv`
-```
+#### It is recommended to use `venv`
+Recommneded python version `Python 3.7.3`.
+
+Create the virtual environment by running the following
+```bash
 python3 -m venv benchmarking_env 
 source benchmarking_env/bin/activate
 ```
 
-### Pip
-Recommend to upgrade pip
+#### Pip
+Recommended to upgrade pip
 ```bash
 pip install --upgrade pip
 ```
@@ -20,7 +23,8 @@ Then install all required packages with pip
 ```bash
 pip install -r requirements.txt
 ```
-### Conda
+#### Conda
+Alternatively, you can use conda to create a virtual environement.
 
 First, make sure that conda is installed. Refer to [this guide](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) to install it on your system.
 
