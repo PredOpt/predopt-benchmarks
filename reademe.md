@@ -41,3 +41,4 @@ source activate benchmarking_env
 
 You can install any additional library using conda or pip.
 
+### Then to run the benchmarking experiments, navigate to the corresponding directory.
