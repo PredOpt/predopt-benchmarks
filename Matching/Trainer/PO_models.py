@@ -256,26 +256,6 @@ class IMLE(baseline_mse):
 
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
-from qpth.qp import QPFunction
-class QPTL(baseline_mse):
-    def __init__(self, solver,lr=1e-1,mu=0.1,mode='sigmoid',n_layers=2, seed=0,scheduler=False, **kwd):
-        super().__init__(solver,lr,mode,n_layers,seed, scheduler)
-        self.mu = mu
-    def training_step(self, batch, batch_idx):
-        mu = self.mu
-        x,y,sol,m = batch
-        y_hat =  self(x).squeeze()
-
-        loss = 0
-        for i in range(len(y_hat)):
-            A,b, G,h  = self.solver.get_qpt_matrices(m[i])
-            Q =  mu*torch.eye(G.shape[1]).float()
-            op = QPFunction()(Q,-y_hat[i],G,h,A,b).squeeze()
-    
-            loss +=  y[i].dot(sol[i] - op)
-        loss /= len(y_hat)
-        self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
-        return loss
 
 import cvxpy as cp  
 from cvxpylayers.torch import CvxpyLayer
