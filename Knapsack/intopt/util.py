@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.sparse as sps
 from warnings import warn
+import torch
 # from ._optimize import OptimizeWarning
 # from scipy.optimize._remove_redundancy import (
 #     _remove_redundancy_svd, _remove_redundancy_pivot_sparse,
@@ -238,9 +239,9 @@ class standardizeLP:
 def convert_to_np(A_trch =None,b_trch =None,G_trch =None,h_trch =None):
 
     #### First a check To Detect an empty torch tensor torch.Tensor() and if it's empty tensor convert to None
-    if A_trch.nelement() == 0:
+    if torch.is_tensor(A_trch) and A_trch.nelement() == 0:
         A_trch = None
-    if G_trch.nelement() == 0:
+    if torch.is_tensor(G_trch) and G_trch.nelement() == 0:
         G_trch = None
 
     if (A_trch is None) and (G_trch is None):

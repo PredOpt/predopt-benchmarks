@@ -9,8 +9,8 @@ Then extract the data by running
 tar -xvzf ShortestPathData.tar.gz
 ```
 
-Then the test_sp.py can be used to run an experiment, in the following way:
+Then the test_sp.py can be used to run an experiment.
+To reproduce the result of expriements run
 ```
-python test_sp.py --model IMLE --scheduler True --temperature 0.5 --nb_iterations 1 --beta 1.0 --k 5 --nb_iterations 1 --nb_samples 1 --N 1000 --noise 0.5 --deg 6 --lr 0.5
+python test_sp.py --scheduler True
 ```
-Please change the name of the model and the hyperaprameters accordingly.

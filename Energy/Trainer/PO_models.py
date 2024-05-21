@@ -11,7 +11,7 @@ from Trainer.utils import regret_aslist, regret_fn, abs_regret_fn, growpool_fn, 
 
 
 
-class twostage_regression(pl.LightningModule):
+class baseline_mse(pl.LightningModule):
     def __init__(self,param, lr=1e-1, max_epochs=30, seed=0, scheduler=False, relax=False, **kwd):
         """
         A class to implement two stage mse based model and with test and validation module
@@ -96,7 +96,7 @@ class twostage_regression(pl.LightningModule):
         return optimizer
 
 from Trainer.diff_layer import SPOlayer, DBBlayer
-class SPO(twostage_regression):
+class SPO(baseline_mse):
     def __init__(self,param, lr=1e-1, max_epochs=30, seed=20, scheduler=False, relax=False, **kwd):
         super().__init__(param, lr, max_epochs, seed, scheduler, relax)
         self.layer  = SPOlayer(self.solver)
@@ -107,7 +107,7 @@ class SPO(twostage_regression):
         self.log("train_loss",loss, prog_bar=True, on_step=True, on_epoch=True, )
         return loss
 
-class DBB(twostage_regression):
+class DBB(baseline_mse):
     def __init__(self,param,lambda_val=1., lr=1e-1, max_epochs=30, seed=20, scheduler=False, relax=False, **kwd):
         super().__init__(param, lr, max_epochs, seed, scheduler, relax)
         self.layer  = DBBlayer(self.solver, lambda_val= lambda_val)
@@ -122,7 +122,7 @@ class DBB(twostage_regression):
 from imle.wrapper import imle
 from imle.target import TargetDistribution
 from imle.noise import SumOfGammaNoiseDistribution
-class IMLE(twostage_regression):
+class IMLE(baseline_mse):
     def __init__(self, param, lr=0.1, max_epochs=30, seed=0, scheduler=False, relax=False,
                 k=5,nb_iterations=100, nb_samples=1, beta=10.,
                 temperature=1.0,  **kwd):
@@ -147,7 +147,7 @@ class IMLE(twostage_regression):
 
 from DPO import perturbations
 from DPO import fenchel_young as fy
-class FenchelYoung(twostage_regression):
+class FenchelYoung(baseline_mse):
     def __init__(self, param, lr=0.1, max_epochs=30, seed=0, scheduler=False, relax=False, num_samples=10, sigma=0.1, **kwd):
         super().__init__(param, lr, max_epochs, seed, scheduler, relax, **kwd)
         fy_solver = lambda y_: batch_solve(self.solver, y_)
@@ -163,7 +163,7 @@ class FenchelYoung(twostage_regression):
         return loss
 
 from intopt.intopt import intopt
-class IntOpt(twostage_regression):
+class IntOpt(baseline_mse):
     def __init__(self,param, lr=1e-1, max_epochs=30, seed=20, scheduler=False, relax=False,
         thr= 1e-8, damping= 1e-5, diffKKT = False, dopresolve = True, **kwd):
         super().__init__(param, lr, max_epochs, seed, scheduler, relax)
@@ -190,7 +190,7 @@ class IntOpt(twostage_regression):
 import cvxpy as cp
 import cvxpylayers
 from cvxpylayers.torch import CvxpyLayer
-class DCOL(twostage_regression):
+class DCOL(baseline_mse):
     '''
     Implementation oF QPTL using cvxpyayers
     '''
@@ -230,7 +230,7 @@ class DCOL(twostage_regression):
 
 
 from Trainer.CacheLosses import *
-class CachingPO(twostage_regression):
+class CachingPO(baseline_mse):
     def __init__(self,loss,param,init_cache, growth =0.1, lr=1e-1,tau=0.,
         max_epochs=30, seed=20, scheduler=False, relax=False, **kwd):
         '''

@@ -1,0 +1,177 @@
+[
+    {
+        "model": "IntOpt",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 1,
+        "lr": 0.1,
+        "thr": 0.001,
+        "damping": 1.0
+    },
+    {
+        "model": "IntOpt",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 2,
+        "lr": 0.1,
+        "thr": 0.1,
+        "damping": 0.01
+    },
+    {
+        "model": "IntOpt",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 4,
+        "lr": 0.1,
+        "thr": 1e-06,
+        "damping": 0.1
+    },
+    {
+        "model": "IntOpt",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 6,
+        "lr": 0.1,
+        "thr": 0.001,
+        "damping": 1e-06
+    },
+    {
+        "model": "IntOpt",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 8,
+        "lr": 0.1,
+        "thr": 10.0,
+        "damping": 1.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 1,
+        "lr": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 2,
+        "lr": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 4,
+        "lr": 0.5
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 6,
+        "lr": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 8,
+        "lr": 1.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 1,
+        "lr": 1.0,
+        "tau": 1.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 2,
+        "lr": 0.1,
+        "tau": 0.5
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 4,
+        "lr": 0.1,
+        "tau": 1.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 6,
+        "lr": 1.0,
+        "tau": 10.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 8,
+        "lr": 1.0,
+        "tau": 10.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 1,
+        "lr": 0.1,
+        "tau": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 2,
+        "lr": 0.1,
+        "tau": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 4,
+        "lr": 1.0,
+        "tau": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 6,
+        "lr": 0.1,
+        "tau": 1.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 0.5,
+        "deg": 8,
+        "lr": 1.0,
+        "tau": 1.0
+    }
+]

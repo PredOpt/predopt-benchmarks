@@ -212,8 +212,7 @@ class CachingPO(baseline):
             self.loss_fn = NCE_c()
         elif loss== 'MAP_c':
             self.loss_fn = MAP_c()
-        elif loss== 'MAP_c_actual':
-            self.loss_fn = MAP_c_actual()
+
         elif loss== 'SPO':
             self.loss_fn = SPOCaching()
         else:
@@ -257,6 +256,7 @@ class DCOL(baseline):
     def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20,mu=0.1,regularizer='quadratic', scheduler= False,**kwd):
         super().__init__(net,exact_solver, lr, l1_weight,max_epochs, seed, scheduler)
         self.layer = cvxsolver(mu=mu, regularizer=regularizer)
+        self.save_hyperparameters("lr","mu")
     def training_step(self, batch, batch_idx):
    
         x,y, sol = batch
@@ -292,13 +292,14 @@ class QPTL(DCOL):
 class IntOpt(DCOL):
     '''
     Implementation of
-    Differentiable Convex Optimization Layers
+    Homogeneous Selfdual Embedding
     '''
     def __init__(self,net,exact_solver = spsolver,thr=0.1,damping=1e-3,diffKKT = False, lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20, scheduler=False, **kwd):
         
 
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed, scheduler=scheduler)  
         self.solver  = intoptsolver(thr=thr,damping=damping, diffKKT = diffKKT )
+        self.save_hyperparameters("lr","thr", "damping")
 
 
 
@@ -325,7 +326,7 @@ class IMLE(baseline):
         self.imle_layer = imle(imle_solver,target_distribution=target_distribution,
         noise_distribution=noise_distribution, input_noise_temperature= temperature, 
         target_noise_temperature= temperature,nb_samples=self.nb_samples)
-        self.save_hyperparameters("lr")
+        self.save_hyperparameters("lr", "beta", "temperature", "k", "nb_iterations", "nb_samples")
     def training_step(self, batch, batch_idx):
         x,y, sol = batch
         y_hat =  self(x).squeeze()
@@ -377,7 +378,7 @@ class FenchelYoung(baseline):
         self.solver = solver
         self.num_samples = num_samples
         self.sigma = sigma
-        self.save_hyperparameters("lr")
+        self.save_hyperparameters("lr", "sigma", "num_samples")
         self.fy_solver = lambda y_: solver.solution_fromtorch(y_)
     def training_step(self, batch, batch_idx):
         x,y, sol = batch

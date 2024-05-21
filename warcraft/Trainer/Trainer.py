@@ -171,7 +171,7 @@ class SPO(pl.LightningModule):
 
 class baseline(SPO):
     def __init__(self, metadata, model_name= "ResNet18", arch_params={}, neighbourhood_fn =  "8-grid",
-     lr=1e-1,loss="bce", validation_metric="regret",  seed=20,**kwd):
+     lr=1e-1,loss="mse", validation_metric="regret",  seed=20,**kwd):
         """
         A class to implement two stage mse based baseline model and with test and validation module
         Args:

@@ -1,0 +1,330 @@
+[
+    {
+        "model": "DCOL",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.1,
+        "mu": 10.0
+    },
+    {
+        "model": "DCOL",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.05,
+        "mu": 10.0
+    },
+    {
+        "model": "DCOL",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.05,
+        "mu": 10.0
+    },
+    {
+        "model": "DCOL",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.1,
+        "mu": 10.0
+    },
+    {
+        "model": "baseline",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.01
+    },
+    {
+        "model": "baseline",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.05
+    },
+    {
+        "model": "baseline",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.05
+    },
+    {
+        "model": "baseline",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.1
+    },
+    {
+        "model": "SPO",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.5
+    },
+    {
+        "model": "SPO",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 1.0
+    },
+    {
+        "model": "SPO",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.5
+    },
+    {
+        "model": "SPO",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.5
+    },
+    {
+        "model": "DBB",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.1,
+        "lambda_val": 1.0
+    },
+    {
+        "model": "DBB",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.1,
+        "lambda_val": 1.0
+    },
+    {
+        "model": "DBB",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.1,
+        "lambda_val": 1.0
+    },
+    {
+        "model": "DBB",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.1,
+        "lambda_val": 1.0
+    },
+    {
+        "model": "FenchelYoung",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.1,
+        "sigma": 0.01
+    },
+    {
+        "model": "FenchelYoung",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.5,
+        "sigma": 0.01
+    },
+    {
+        "model": "FenchelYoung",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 1.0,
+        "sigma": 2.0
+    },
+    {
+        "model": "FenchelYoung",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 1.0,
+        "sigma": 0.01
+    },
+    {
+        "model": "IMLE",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.5,
+        "beta": 0.1,
+        "temperature": 0.1,
+        "k": 5
+    },
+    {
+        "model": "IMLE",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.5,
+        "beta": 0.1,
+        "temperature": 0.5,
+        "k": 5
+    },
+    {
+        "model": "IMLE",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.5,
+        "beta": 0.1,
+        "temperature": 0.05,
+        "k": 5
+    },
+    {
+        "model": "IMLE",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.5,
+        "beta": 0.1,
+        "temperature": 0.05,
+        "k": 5
+    },
+    {
+        "model": "CachingPO",
+        "loss": "MAP_c",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.01
+    },
+    {
+        "model": "CachingPO",
+        "loss": "MAP_c",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 1.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "MAP_c",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 1.0
+    },
+    {
+        "model": "CachingPO",
+        "loss": "MAP_c",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.05
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.05
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise_diff",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.01,
+        "tau": 0.01
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.01,
+        "tau": 0.1
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.1,
+        "tau": 0.05
+    },
+    {
+        "model": "CachingPO",
+        "loss": "pairwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.01,
+        "tau": 0.01
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 1,
+        "lr": 0.1,
+        "tau": 0.01
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 4,
+        "lr": 0.1,
+        "tau": 0.01
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 16,
+        "lr": 0.05,
+        "tau": 0.005
+    },
+    {
+        "model": "CachingPO",
+        "loss": "listwise",
+        "N": 1000,
+        "noise": 1,
+        "deg": 8,
+        "lr": 0.1,
+        "tau": 0.01
+    }
+]

@@ -9,8 +9,8 @@ Then extract the data by running
 tar -xvzf PortfolioData.tar.gz
 ```
 
-Then the test_sp.py can be used to run an experiment, in the following way:
+Then the test_sp.py can be used to run an experiment.
+To reproduce the result of expriements run
 ```
-python test_sp.py --model SPO --scheduler True --N 1000 --noise 1 --deg 16 --lr 0.05
+python test_sp.py --scheduler True
 ```
-Please change the name of the model and the hyperaprameters accordingly.
