@@ -1,9 +1,6 @@
 This directory corresponds to the Shortest path problem on a $5 \times 5$ grid.
 
-First download the data by running
-```
-gdown 1_hSLqD89nk7yVcW79QvG5SzbnJ_IRmBY
-```
+Download the shortest path datset from the repository: https://doi.org/10.48804/KT2P3Z. 
 Then extract the data by running
 ```
 tar -xvzf ShortestPathData.tar.gz
