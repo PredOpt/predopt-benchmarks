@@ -1,9 +1,8 @@
 This directory corresponds to the portfolio optimization problem.
 
-First download the data by running
-```
-gdown 17P_hXJhvVsdcc1dGBGhAn5r5rkhNMsWj
-```
+
+Download the portfolio optimization datset from the repository: https://doi.org/10.48804/KT2P3Z. 
+
 Then extract the data by running
 ```
 tar -xvzf PortfolioData.tar.gz
