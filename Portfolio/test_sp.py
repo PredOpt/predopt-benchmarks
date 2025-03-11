@@ -95,7 +95,7 @@ for parameters in parameter_sets:
     sentinel_ns = Namespace(**explicit_keys)
     parser.parse_args(namespace=sentinel_ns)
     explicit = {key:value for key, value in vars(sentinel_ns).items() if value is not sentinel }
-    print ("EXPLICIT",  explicit)
+    # print ("EXPLICIT",  explicit)
     get_class = lambda x: globals()[x]
     modelcls = get_class(argument_dict['model'])
     modelname = argument_dict.pop('model')

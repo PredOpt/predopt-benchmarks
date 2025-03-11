@@ -18,6 +18,18 @@ from imle.target import TargetDistribution
 from imle.noise import SumOfGammaNoiseDistribution
 
 class baseline_mse(pl.LightningModule):
+    """
+    Two-Stage Model for Predicting Values of Knapsack Problems
+
+    Args:
+        weights (np.ndarray): Array of item weights
+        capacity (float): Knapsack capacity
+        n_items (int): Number of items
+        lr (float, optional): Learning rate. Defaults to 1e-1.
+        seed (int, optional): Random seed for reproducibility. Defaults to 0.
+        scheduler (bool, optional): Whether to use learning rate scheduler. Defaults to False.
+        **kwd: Additional keyword arguments
+    """
     def __init__(self,weights,capacity,n_items,lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__()
         pl.seed_everything(seed)
@@ -90,6 +102,18 @@ class baseline_mse(pl.LightningModule):
 
 
 class SPO(baseline_mse):
+    """
+    Smart Predict-then-Optimize (SPO+) Implementation for Predicting Values of Knapsack Problems
+
+    Args:
+        weights (np.ndarray): Array of item weights
+        capacity (float): Knapsack capacity
+        n_items (int): Number of items
+        lr (float, optional): Learning rate. Defaults to 1e-1.
+        seed (int, optional): Random seed for reproducibility. Defaults to 0.
+        scheduler (bool, optional): Whether to use learning rate scheduler. Defaults to False.
+        **kwd: Additional keyword arguments
+    """
     def __init__(self,weights,capacity,n_items,lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed, scheduler)
         self.layer = SPOlayer(self.solver)
@@ -104,6 +128,24 @@ class SPO(baseline_mse):
         return loss
 
 class DBB(baseline_mse):
+    """
+    Implementation of Differentiable Black-Box Optimization
+
+
+    A decision-focused learning approach that enables end-to-end training through black-box optimization solvers.
+    This method computes gradients directly through the optimization problem without requiring
+    explicit knowledge of the solver's internal structure.
+
+    Args:
+        weights (np.ndarray): Array of item weights
+        capacity (float): Knapsack capacity
+        n_items (int): Number of items
+        lambda_val (float, optional): Regularization parameter. Defaults to 1.
+        lr (float, optional): Learning rate. Defaults to 1e-1.
+        seed (int, optional): Random seed for reproducibility. Defaults to 0.
+        scheduler (bool, optional): Whether to use learning rate scheduler. Defaults to False.
+        **kwd: Additional keyword arguments
+    """
     def __init__(self,weights,capacity,n_items,lambda_val=1., lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed, scheduler)
         self.layer = DBBlayer(self.solver, lambda_val=lambda_val)
@@ -119,6 +161,21 @@ class DBB(baseline_mse):
         return loss
 
 class FenchelYoung(baseline_mse):
+    """
+    Implementation of Fenchel-Young loss  using perturbation techniques
+    (Ref: https://github.com/tuero/perturbations-differential-pytorch)\
+
+    Args:
+        weights (np.ndarray): Array of item weights 
+        capacity (float): Knapsack capacity
+        n_items (int): Number of items
+        sigma (float, optional): Standard deviation of perturbation. Defaults to 0.1.
+        num_samples (int, optional): Number of samples for perturbation. Defaults to 10.
+        lr (float, optional): Learning rate. Defaults to 1e-1.
+        seed (int, optional): Random seed for reproducibility. Defaults to 0.
+        scheduler (bool, optional): Whether to use learning rate scheduler. Defaults to False.
+        **kwd: Additional keyword arguments
+    """
     def __init__(self,weights,capacity,n_items,sigma=0.1,num_samples=10, lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed, scheduler)  
 
@@ -155,6 +212,25 @@ class DPO(baseline_mse):
         return loss
 
 class IMLE(baseline_mse):
+    """
+    Implementation of
+    Implicit MLE (I-MLE): Backpropagating Through Discrete Exponential Family Distributions 
+    (Ref: https://github.com/uclnlp/torch-imle/blob/main/annotation-cli.py)
+    Args:
+        weights (np.ndarray): Array of item weights
+        capacity (float): Knapsack capacity
+        n_items (int): Number of items
+        k: the number of iterations
+        nb_iterations: the number of iterations
+        nb_samples: the number of samples
+        beta: the beta parameter for the solver
+        temperature: the temperature for the solver
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        scheduler: the scheduler for learning rate
+    """
     def __init__(self,weights,capacity,n_items, k=5, nb_iterations=100,nb_samples=1, beta=10.0,
             temperature=1.0,   lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed, scheduler)
@@ -192,6 +268,22 @@ class DCOL(baseline_mse):
 
 
 class IntOpt(baseline_mse):
+    """
+    Implementation of
+    Homogeneous Selfdual Embedding 
+    (Ref: https://proceedings.neurips.cc/paper/2020/hash/51311013e51adebc3c34d2cc591fefee-Abstract.html)
+    Args:
+        weights (np.ndarray): Array of item weights
+        capacity (float): Knapsack capacity
+        n_items (int): Number of items
+        thr: the threshold for the 
+        damping: the damping parameter for the solver
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        scheduler: the scheduler for learning rate
+    """
     def __init__(self,weights,capacity,n_items,thr=0.1,damping=1e-3,lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed, scheduler)
         self.comblayer = intopt_knapsack_solver(weights,capacity,n_items, thr= thr,damping= damping)
@@ -206,11 +298,27 @@ class IntOpt(baseline_mse):
 
 from Trainer.CacheLosses import *
 class CachingPO(baseline_mse):
+    """
+    Implementation of
+    Caching for Pairwise Ranking
+    (Ref: https://proceedings.neurips.cc/paper/2020/hash/51311013e51adebc3c34d2cc591fefee-Abstract.html)
+    Args:
+        weights (np.ndarray): Array of item weights
+        capacity (float): Knapsack capacity
+        n_items (int): Number of items
+        init_cache: the initial cache
+        tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
+        growth: the growth parameter for the cache
+        loss: the loss function
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        scheduler: the scheduler for learning rate
+    """
     def __init__(self, weights,capacity,n_items,init_cache,tau=1.,growth=0.1,loss="listwise",lr=1e-1,seed=0,scheduler=False, **kwd):
         super().__init__(weights,capacity,n_items,lr,seed, scheduler)
-        '''tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
-        '''
-
+  
 
         if loss=="pointwise":
             self.loss_fn = PointwiseLoss()

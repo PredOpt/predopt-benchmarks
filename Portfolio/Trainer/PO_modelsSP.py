@@ -133,9 +133,6 @@ class SPO(baseline):
     def __init__(self,net,exact_solver,cov, gamma,lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20, scheduler=False, **kwd):
         """
         Implementaion of SPO+ loss subclass of twostage model
-            loss_fn: loss function 
-
- 
         """
         super().__init__(net,exact_solver, cov, gamma, lr, l1_weight,max_epochs, seed, scheduler)
         self.loss_fn =  SPOlayer(self.exact_solver)

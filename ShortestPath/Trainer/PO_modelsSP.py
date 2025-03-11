@@ -17,17 +17,26 @@ from DPO import perturbations
 from DPO import fenchel_young as fy
 
 class baseline(pl.LightningModule):
+    """
+    Two-Stage Model for Shortest Path Prediction
+        
+    A PyTorch Lightning implementation of a two-stage predict-then-optimize approach for shortest path problems.
+    The model consists of:
+    1. A prediction stage using neural networks to estimate edge costs
+    2. An optimization stage that computes shortest paths using the predicted costs
+        
+    Args:
+        net (torch.nn.Module): Neural network for edge cost prediction
+        exact_solver (callable, optional): Function that computes shortest path given edge costs.
+            Defaults to spsolver.
+        lr (float, optional): Learning rate for optimizer. Defaults to 0.1.
+        l1_weight (float, optional): L1 regularization weight. Defaults to 1e-5.
+        max_epochs (int, optional): Maximum training epochs. Defaults to 30.
+        seed (int, optional): Random seed for reproducibility. Defaults to 20.
+        scheduler (bool, optional): Whether to use learning rate scheduler. Defaults to False.
+        **kwd: Additional keyword arguments
+    """
     def __init__(self,net,exact_solver = spsolver, lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20, scheduler=False, **kwd):
-        """
-        A class to implement two stage mse based model and with test and validation module
-        Args:
-            net: the neural network model
-            exact_solver: the solver which returns a shortest path solution given the edge cost
-            lr: learning rate
-            l1_weight: the lasso regularization weight
-            max_epoch: maximum number of epcohs
-            seed: seed for reproducibility 
-        """
         super().__init__()
         pl.seed_everything(seed)
         self.net =  net
@@ -130,6 +139,31 @@ class baseline(pl.LightningModule):
         return optimizer
 
 class SPO(baseline):
+    """
+    Smart Predict-then-Optimize (SPO+) Implementation
+
+    A specialized implementation of the SPO+ loss function for shortest path problems.
+    This model extends the baseline two-stage approach by using a more sophisticated
+    loss function that better aligns with the downstream optimization objective.
+
+    The SPO+ loss is designed to minimize the difference between:
+    1. The optimal solution using true costs
+    2. The optimal solution using predicted costs
+
+    Args:
+        net (torch.nn.Module): Neural network for edge cost prediction
+        exact_solver (callable, optional): Function that computes shortest path given edge costs.
+            Defaults to spsolver.
+        lr (float, optional): Learning rate for optimizer. Defaults to 0.1.
+        l1_weight (float, optional): L1 regularization weight. Defaults to 1e-5.
+        max_epochs (int, optional): Maximum training epochs. Defaults to 30.
+        seed (int, optional): Random seed for reproducibility. Defaults to 20.
+        scheduler (bool, optional): Whether to use learning rate scheduler. Defaults to False.
+        **kwd: Additional keyword arguments
+
+    References:
+        Elmachtoub & Grigas (2021) "Smart Predict, then Optimize"
+    """
     def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20, scheduler=False, **kwd):
         """
         Implementaion of SPO+ loss subclass of twostage model
@@ -155,8 +189,24 @@ class SPO(baseline):
         return training_loss  
 
 class DBB(baseline):
-    """
-    Implemenation of Blackbox differentiation gradient
+ """
+    Implementation of Differentiable Black-Box Optimization
+
+    A decision-focused learning approach that enables end-to-end training through black-box optimization solvers.
+    This method computes gradients directly through the optimization problem without requiring
+    explicit knowledge of the solver's internal structure.
+
+    Args:
+        net (torch.nn.Module): Neural network for edge cost prediction
+        exact_solver (callable, optional): Function that computes shortest path given edge costs.
+            Defaults to spsolver.
+        lr (float, optional): Learning rate for optimizer. Defaults to 0.1.
+        lambda_val (float, optional): Lambda parameter for DBB. Defaults to 0.1.
+        l1_weight (float, optional): L1 regularization weight. Defaults to 1e-5.
+        max_epochs (int, optional): Maximum training epochs. Defaults to 30.
+        seed (int, optional): Random seed for reproducibility. Defaults to 20.
+        scheduler (bool, optional): Whether to use learning rate scheduler. Defaults to False.
+        **kwd: Additional keyword arguments
     """
     def __init__(self,net,exact_solver = spsolver,lr=1e-1,lambda_val =0.1, l1_weight=1e-5,max_epochs=30, seed=20, scheduler=False, **kwd):
         super().__init__(net,exact_solver, lr, l1_weight,max_epochs, seed, scheduler)
@@ -180,9 +230,9 @@ class CachingPO(baseline):
     def __init__(self,loss,init_cache, net,exact_solver = spsolver,growth=0.1,tau=0.,lr=1e-1,
         l1_weight=1e-5,max_epochs=30, seed=20, scheduler=False, **kwd):
         """
-        A class to implement loss functions using soluton cache
+        A class to implement loss functions using soluton caching
         Args:
-            loss_fn: the loss function (NCE, MAP or the rank-based ones)
+            loss: the loss function (NCE, MAP or the rank-based ones)
             init_cache: initial solution cache
             growth: p_solve
             tau: the margin parameter for pairwise ranking / temperatrure for listwise ranking
@@ -251,9 +301,19 @@ class CachingPO(baseline):
 class DCOL(baseline):
     '''
     Implementation of
-    Differentiable Convex Optimization Layers
+    Differentiable Convex Optimization Layers (DCOL)
+    Args:
+        net: the neural network model
+        exact_solver: the solver which returns a shortest path solution given the edge cost
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        mu: the regularization parameter
+        regularizer: the type of regularizer
+        scheduler: the scheduler for learning rate
     '''
-    def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20,mu=0.1,regularizer='quadratic', scheduler= False,**kwd):
+    def __init__(self, net, exact_solver = spsolver,lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20,mu=0.1,regularizer='quadratic', scheduler= False,**kwd):
         super().__init__(net,exact_solver, lr, l1_weight,max_epochs, seed, scheduler)
         self.layer = cvxsolver(mu=mu, regularizer=regularizer)
         self.save_hyperparameters("lr","mu")
@@ -281,34 +341,56 @@ class DCOL(baseline):
 class QPTL(DCOL):
     '''
     Implementation of
-    Differentiable Convex Optimization Layers
+    Differentiable Convex Optimization Layers (DCOL)
     '''
     def __init__(self,net,exact_solver = spsolver,lr=1e-1, l1_weight=1e-5,  max_epochs=30, seed=20,mu=0.1, scheduler=False, **kwd):
-        
-
         super().__init__(net,exact_solver,lr, l1_weight,max_epochs, seed, mu,  scheduler=scheduler)  
         self.solver = qpsolver( mu=mu)
     
 class IntOpt(DCOL):
     '''
     Implementation of
-    Homogeneous Selfdual Embedding
+    Homogeneous Selfdual Embedding 
+    (Ref: https://proceedings.neurips.cc/paper/2020/hash/51311013e51adebc3c34d2cc591fefee-Abstract.html)
+    Args:
+        net: the neural network model
+        exact_solver: the solver which returns a shortest path solution given the edge cost
+        thr: the threshold for the solver
+        damping: the damping parameter for the solver
+        diffKKT: whether to use the KKT conditions
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        scheduler: the scheduler for learning rate
     '''
     def __init__(self,net,exact_solver = spsolver,thr=0.1,damping=1e-3,diffKKT = False, lr=1e-1, l1_weight=1e-5,max_epochs=30, seed=20, scheduler=False, **kwd):
-        
-
         super().__init__(net,exact_solver , lr, l1_weight,max_epochs, seed, scheduler=scheduler)  
         self.solver  = intoptsolver(thr=thr,damping=damping, diffKKT = diffKKT )
         self.save_hyperparameters("lr","thr", "damping")
 
 
 
-##################################### I-MLE #########################################
-######### Code adapted from https://github.com/uclnlp/torch-imle/blob/main/annotation-cli.py ###########################
- 
-
-
 class IMLE(baseline):
+    '''
+    Implementation of
+    Implicit MLE (I-MLE): Backpropagating Through Discrete Exponential Family Distributions 
+    (Ref: https://github.com/uclnlp/torch-imle/blob/main/annotation-cli.py)
+    Args:
+        net: the neural network model
+        exact_solver: the solver which returns a shortest path solution given the edge cost
+        solver: the solver which returns a shortest path solution given the edge cost
+        k: the number of iterations
+        nb_iterations: the number of iterations
+        nb_samples: the number of samples
+        beta: the beta parameter for the solver
+        temperature: the temperature for the solver
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        scheduler: the scheduler for learning rate
+    '''
     def __init__(self,net,solver=spsolver,exact_solver = spsolver,k=5,nb_iterations=100,nb_samples=1, beta=10.,
             temperature=1.0, lr=1e-1,l1_weight=1e-5,max_epochs=30,seed=20 , scheduler=False, **kwd):
         super().__init__(net,exact_solver , lr, l1_weight, max_epochs, seed, scheduler)
@@ -343,6 +425,22 @@ class IMLE(baseline):
 ###################################### Differentiable Perturbed Optimizer #########################################
 
 class DPO(baseline):
+    '''
+    Implementation of
+    Differentiable Perturbed Optimizer (DPO)
+    (Ref: https://github.com/tuero/perturbations-differential-pytorch)
+    Args:
+        net: the neural network model
+        exact_solver: the solver which returns a shortest path solution given the edge cost
+        solver: the solver which returns a shortest path solution given the edge cost
+        num_samples: the number of samples
+        sigma: the standard deviation of the perturbation
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        scheduler: the scheduler for learning rate
+    '''
     def __init__(self,net,solver=spsolver,exact_solver = spsolver,num_samples=10, sigma=0.1, lr=1e-1,l1_weight=1e-5, max_epochs= 30, seed=20, scheduler=False, **kwd):
         super().__init__(net,exact_solver , lr, l1_weight, max_epochs, seed, scheduler)
         self.solver = solver
@@ -373,6 +471,22 @@ class DPO(baseline):
 ################################ Implementation of a Fenchel-Young loss using perturbation techniques #########################################
 
 class FenchelYoung(baseline):
+    '''
+    Implementation of
+    Fenchel-Young loss using perturbation techniques
+    (Ref: https://github.com/tuero/perturbations-differential-pytorch)
+    Args:
+        net: the neural network model
+        exact_solver: the solver which returns a shortest path solution given the edge cost
+        solver: the solver which returns a shortest path solution given the edge cost
+        num_samples: the number of samples
+        sigma: the standard deviation of the perturbation
+        lr: learning rate
+        l1_weight: the lasso regularization weight
+        max_epoch: maximum number of epcohs
+        seed: seed for reproducibility 
+        scheduler: the scheduler for learning rate
+    '''
     def __init__(self,net,solver=spsolver,exact_solver = spsolver,num_samples=10, sigma=0.1,lr=1e-1, l1_weight=1e-5, max_epochs=30, seed=20, scheduler=False, **kwd):
         super().__init__(net,exact_solver , lr, l1_weight, max_epochs, seed, scheduler)
         self.solver = solver

@@ -1,3 +1,46 @@
+"""
+Testing Framework for Decision-Focused Learning on Bipartite Matching Problems
+
+This script implements the experimental evaluation framework from the JAIR paper:
+"Decision-focused learning: Foundations, state of the art, benchmark and future opportunities"
+
+The framework evaluates different DFL approaches on diverse bipartite matching tasks with:
+1. Various model architectures and loss functions
+2. Multiple DFL methods (SPO, DBB, DPO, etc.)
+3. Configurable diversity parameters (p, q)
+4. Reproducible experiments through seed control
+
+Configuration:
+    Model parameters are loaded from 'config.json', enabling systematic evaluation
+    of different approaches and hyperparameters.
+
+Arguments:
+    Problem Configuration:
+    --instance (str): Instance type with diversity parameters, options:
+                     1: {'p':0.1, 'q':0.1}
+                     2: {'p':0.25, 'q':0.25}
+                     3: {'p':0.5, 'q':0.5}
+
+    Model Configuration:
+    --model (str): DFL model to evaluate (e.g., 'SPO', 'DBB', 'DPO')
+    --loss (str): Loss function for training
+
+    Training Parameters:
+    --lr (float): Learning rate (default: 1e-3)
+    --batch_size (int): Batch size (default: 128)
+    --max_epochs (int): Maximum training epochs (default: 30)
+    --l1_weight (float): L1 regularization weight (default: 1e-5)
+
+    Model-Specific Parameters:
+    --lambda_val (float): Interpolation parameter for blackbox differentiation (default: 1.0)
+    --sigma (float): Noise parameter for DPO/FY methods (default: 1.0)
+    --num_samples (int): Number of samples for FY (default: 1)
+    --temperature (float): Temperature parameter for noise (default: 1.0)
+    --nb_iterations (int): Number of iterations (default: 1)
+    --k (int): Parameter k for specific methods (default: 10)
+    --nb_samples (int): Number of samples parameter (default: 1)
+"""
+
 import argparse
 from argparse import Namespace
 import pytorch_lightning as pl
@@ -13,22 +56,29 @@ from Trainer.data_utils import CoraMatchingDataModule, return_trainlabel
 from Trainer.bipartite import bmatching_diverse
 from distutils.util import strtobool
 import json
-params_dict = { 1:{'p':0.1, 'q':0.1}, 2:{'p':0.25, 'q':0.25},3:{'p':0.5, 'q':0.5}  }
 
+# Define diversity parameter sets for different instances
+params_dict = { 
+    1: {'p': 0.1, 'q': 0.1}, 
+    2: {'p': 0.25, 'q': 0.25},
+    3: {'p': 0.5, 'q': 0.5}  
+}
 
-parser = argparse.ArgumentParser()
-parser.add_argument("--model", type=str, help="name of the model", default= "", required= False)
-parser.add_argument("--instance", type=str, help="{1:{'p':0.1, 'q':0.1}, 2:{'p':0.25, 'q':0.25},3:{'p':0.5, 'q':0.5}", default= "1", required=False)
-parser.add_argument("--loss", type= str, help="loss", default= "", required= False)
+parser = argparse.ArgumentParser(description="Testing framework for Decision-Focused Learning on diverse matching problems")
 
+# Problem configuration
+parser.add_argument("--model", type=str, help="Name of the DFL model to evaluate (e.g., 'SPO', 'DBB', 'DPO')", default="", required=False)
+parser.add_argument("--instance", type=str, help="Instance type with diversity parameters (1, 2, or 3)", default="1", required=False)
+parser.add_argument("--loss", type=str, help="Loss function for training", default="", required=False)
 
-parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
-parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
-parser.add_argument("--max_epochs", type=int, help="maximum number of epochs", default= 30, required=False)
-parser.add_argument("--l1_weight", type=float, help="Weight of L1 regularization", default= 1e-5, required=False)
+# Training parameters
+parser.add_argument("--lr", type=float, help="Learning rate", default=1e-3, required=False)
+parser.add_argument("--batch_size", type=int, help="Batch size", default=128, required=False)
+parser.add_argument("--max_epochs", type=int, help="Maximum number of epochs", default=30, required=False)
+parser.add_argument("--l1_weight", type=float, help="Weight of L1 regularization", default=1e-5, required=False)
 
-
-parser.add_argument("--lambda_val", type=float, help="interpolaton parameter blackbox", default= 1., required=False)
+# Model-specific parameters
+parser.add_argument("--lambda_val", type=float, help="Interpolation parameter for blackbox differentiation", default=1., required=False)
 parser.add_argument("--sigma", type=float, help="DPO FY noise parameter", default= 1., required=False)
 parser.add_argument("--num_samples", type=int, help="number of samples FY", default= 1, required=False)
 
@@ -37,7 +87,6 @@ parser.add_argument("--nb_iterations", type=int, help="number of iterations", de
 parser.add_argument("--k", type=int, help="parameter k", default= 10, required=False)
 parser.add_argument("--nb_samples", type=int, help="Number of samples paprameter", default= 1, required=False)
 parser.add_argument("--beta", type=float, help="parameter lambda of IMLE", default= 10., required=False)
-
 
 parser.add_argument("--mu", type=float, help="Regularization parameter DCOL & QPTL", default= 10., required=False)
 parser.add_argument("--regularizer", type=str, help="Types of Regularization", default= 'quadratic', required=False)
@@ -50,10 +99,6 @@ parser.add_argument("--growth", type=float, help="growth parameter of rankwise l
 
 parser.add_argument('--scheduler', dest='scheduler',  type=lambda x: bool(strtobool(x)))
 
-
-# parser.add_argument("--output_tag", type=str, help="tag", default= 50, required=False)
-# parser.add_argument("--index", type=int, help="index", default= 50, required=False)
-
 class _Sentinel:
     pass
 sentinel = _Sentinel()
@@ -65,7 +110,7 @@ def seed_all(seed):
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
     random.seed(seed)
-# Load parameter sets from JSON filw
+# Load parameter sets from JSON file
 with open('config.json', "r") as json_file:
     parameter_sets = json.load(json_file)
 
@@ -94,7 +139,6 @@ for parameters in parameter_sets:
     if modelname=="CachingPO":
         cache = return_trainlabel( solver,params )
     # ###################################### Hyperparams #########################################
-
 
     torch.use_deterministic_algorithms(True)
 
@@ -189,4 +233,3 @@ for parameters in parameter_sets:
     "val_mse": mses })
     df['model'] = modelname
     df.to_csv(learning_curve_datafile)
-

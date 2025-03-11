@@ -12,17 +12,39 @@ from tensorboard.backend.event_processing.event_accumulator import EventAccumula
 from distutils.util import strtobool
 from pathlib import Path
 import json
+"""
 
+Configuration:
+    The script loads model configurations from 'config.json', allowing for systematic
+    evaluation of different approaches and hyperparameters.
+
+Arguments:
+    Dataset Configuration:
+    --N (int): Number of training examples (default: 1000)
+    --noise (float): Noise halfwidth for data generation (default: 5.5)
+    --deg (int): Degree of misspecification (default: 10)
+
+    Model Configuration:
+    --model (str): DFL model to evaluate (e.g., 'SPO', 'DBB', 'DPO')
+    --loss (str): Loss function for training
+    --net (str): Network architecture ['nonorm', 'batchnorm', 'l1norm']
+
+    Training Parameters:
+    --lr (float): Learning rate (default: 1e-3)
+    --batch_size (int): Batch size (default: 128)
+    --max_epochs (int): Maximum training epochs (default: 30)
+    --l1_weight (float): L1 regularization strength
+"""
 parser = argparse.ArgumentParser()
-
+# Dataset configuration
 parser.add_argument("--N", type=int, help="Dataset size", default= 1000, required= False)
 parser.add_argument("--noise", type= float, help="noise halfwidth paraemter", default= 5.5, required= False)
 parser.add_argument("--deg", type=int, help="degree of misspecifaction", default= 10, required= False)
-
+# Model configuration
 parser.add_argument("--model", type=str, help="name of the model", default= "", required= False)
 parser.add_argument("--loss", type= str, help="loss", default= "", required=False)
 parser.add_argument("--net", type=str, help="Type of Model Archietcture, one of: nonorm, batchnorm,l1norm", default= "nonorm", required= False)
-
+# Training parameters
 parser.add_argument("--lr", type=float, help="learning rate", default= 1e-3, required=False)
 parser.add_argument("--batch_size", type=int, help="batch size", default= 128, required=False)
 parser.add_argument("--max_epochs", type=int, help="maximum number of epochs", default= 30, required=False)
@@ -140,7 +162,7 @@ for parameters in parameter_sets:
     valid_df =  datawrapper( x_valid,y_valid)
     test_df =  datawrapper( x_test,y_test)
     shutil.rmtree(log_dir,ignore_errors=True)
-
+    # Repeat experiments over 10 random seeds
     for seed in range(10):
         seed_all(seed)
 
