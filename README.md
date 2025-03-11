@@ -7,7 +7,7 @@ This repository provides a comprehensive framework for benchmarking Predict-then
 
 This repository contains the implementation for the paper (Accepted to Journal of Artificial Intelligence Research (JAIR)):
 
-> Mandi, J., Kotary, J., Berden, S., Mulamba, M., Bucarey, V., Guns, T., & Fioretto, F. (2024). Decision-focused learning: Foundations, state of the art, benchmark and future opportunities. Journal of Artificial Intelligence Research, 80, 1623-1701. [DOI: 10.1613/jair.1.14123](https://doi.org/10.1613/jair.1.14123)
+> Mandi, J., Kotary, J., Berden, S., Mulamba, M., Bucarey, V., Guns, T., & Fioretto, F. (2024). Decision-focused learning: Foundations, state of the art, benchmark and future opportunities. Journal of Artificial Intelligence Research, 80, 1623-1701. [DOI: 10.1613/jair.1.15320](https://doi.org/10.1613/jair.1.15320)
 
 If you use this code in your research, please cite:
 ```bibtex
@@ -18,7 +18,7 @@ If you use this code in your research, please cite:
   volume={80},
   pages={1623--1701},
   year={2024},
-  doi={10.1613/jair.1.14123}
+  doi={10.1613/jair.1.15320}
 }
 ```
 
